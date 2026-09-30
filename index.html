@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bảng T-Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: full-screen infinite whiteboard (dot grid, ledger ink) with floating tool palettes at the edges. */
+:root {
+  --board: #fafbf8; --grid: #cdd5cf; --ui: #ffffff; --ui-2: #eef2ee; --line: #d8dfd9;
+  --fg: #1c2520; --muted: #5d6a62; --accent: #1f6b4a; --accent-soft: #dbece2; --scrim: rgba(18, 28, 22, .45);
+  --pen-ink: #1c2520; --pen-red: #c0392b; --pen-blue: #2354a8; --pen-green: #1f7a4c; --pen-orange: #c7741a; --pen-purple: #7a3fa0; --pen-yellow: #f2d20a;
+  --plus: #1f7a4c; --minus: #c0392b; --ok-bg: #dbece2; --bad-bg: #f8dfdb;
+  --shadow: 0 6px 24px rgba(22, 40, 30, .12), 0 1px 3px rgba(22, 40, 30, .08);
+  --ui-font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --hand: "Patrick Hand", "Comic Sans MS", cursive;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --board: #161b18; --grid: #2e3832; --ui: #202724; --ui-2: #2a332e; --line: #35403a;
+    --fg: #e4ebe6; --muted: #98a69e; --accent: #6cc49a; --accent-soft: #23392d; --scrim: rgba(0, 0, 0, .6);
+    --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
+    --plus: #6cc49a; --minus: #ff7a69; --ok-bg: #23392d; --bad-bg: #432723;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --board: #161b18; --grid: #2e3832; --ui: #202724; --ui-2: #2a332e; --line: #35403a;
+  --fg: #e4ebe6; --muted: #98a69e; --accent: #6cc49a; --accent-soft: #23392d; --scrim: rgba(0, 0, 0, .6);
+  --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
+  --plus: #6cc49a; --minus: #ff7a69; --ok-bg: #23392d; --bad-bg: #432723;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--board); color: var(--fg); font: 14px/1.4 var(--ui-font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- board ---------- */
+#board { position: fixed; inset: 0; overflow: hidden; touch-action: none; background-color: var(--board); cursor: crosshair; user-select: none; -webkit-user-select: none; }
+#board[data-grid="dots"] { background-image: radial-gradient(circle, var(--grid) 1.3px, transparent 1.5px); }
+#board[data-grid="lines"] { background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); }
+body[data-tool="select"] #board { cursor: default; }
+body[data-tool="hand"] #board, body.space #board { cursor: grab; }
+body.panning #board { cursor: grabbing; }
+body[data-tool="text"] #board { cursor: text; }
+body[data-tool="eraser"] #board { cursor: cell; }
+body[data-tool="ta"] #board { cursor: copy; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#ta-layer { position: absolute; left: 0; top: 0; }
+#ink { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+
+/* ---------- T-account ---------- */
+.ta { position: absolute; box-sizing: border-box; padding: 8px 14px 10px; border-radius: 10px; border: 1.5px solid transparent; background: var(--board); pointer-events: none; user-select: text; -webkit-user-select: text; }
+body[data-tool="select"] .ta { pointer-events: auto; }
+body[data-tool="select"] .ta:hover { border-color: var(--line); }
+.ta.sel { border-color: var(--accent) !important; box-shadow: 0 0 0 4px var(--accent-soft); }
+.ta input { font: inherit; color: inherit; background: transparent; border: 0; outline: 0; min-width: 0; padding: 2px 4px; border-radius: 4px; box-sizing: border-box; width: 100%; }
+.ta input:focus { background: var(--accent-soft); }
+.ta input::placeholder { color: var(--muted); opacity: .55; }
+.ta button { border: 0; background: none; cursor: pointer; padding: 0; }
+.ta-top { display: grid; grid-template-columns: 22px 1fr 22px; align-items: center; gap: 4px; margin-bottom: 2px; }
+.ta-grip { cursor: grab; color: var(--muted); display: grid; place-items: center; height: 26px; border-radius: 6px; touch-action: none; }
+.ta-grip:hover { background: var(--ui-2); }
+.ta-grip svg { width: 14px; height: 14px; fill: currentColor; }
+.ta-title { text-align: center; font-weight: 700; font-size: 17px; letter-spacing: .01em; }
+.ta-x { color: var(--muted); font-size: 18px; line-height: 1; height: 26px; border-radius: 6px; opacity: 0; }
+.ta:hover .ta-x, .ta.sel .ta-x { opacity: 1; }
+.ta-x:hover { background: var(--bad-bg); color: var(--minus); }
+.ta-heads { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 2.5px solid var(--pen-ink); }
+.ta-h { text-align: center; font-weight: 600; font-size: 13px; color: var(--muted); }
+.ta-body { display: grid; grid-template-columns: 1fr 1fr; min-height: 84px; }
+.ta-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 6px 8px 4px 0; }
+.ta-col[data-side="R"] { border-left: 2.5px solid var(--pen-ink); padding: 6px 0 4px 8px; }
+.ta-row { display: grid; grid-template-columns: 24px 20px minmax(0, 1fr) 58px 16px; align-items: center; gap: 2px; }
+.ta .r-st { font: 500 11px var(--mono); color: var(--muted); text-align: center; padding: 2px 0; }
+.r-sg { width: 20px; height: 22px; border-radius: 5px; font: 700 15px/1 var(--mono); }
+.r-sg:hover { background: var(--ui-2); }
+.r-sg.pos { color: var(--plus); }
+.r-sg.neg { color: var(--minus); }
+.ta .r-lb { font-size: 14px; }
+.ta .r-am { font: 500 14px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.ta-row.neg .r-am { color: var(--minus); }
+.r-x { color: var(--muted); font-size: 15px; line-height: 1; height: 20px; border-radius: 4px; opacity: 0; }
+.ta-row:hover .r-x, .ta-row:focus-within .r-x { opacity: 1; }
+.r-x:hover { color: var(--minus); }
+.ta-add { align-self: flex-start; color: var(--muted); font-size: 12px; padding: 2px 6px !important; border-radius: 5px; margin-top: 2px; }
+.ta-add:hover { background: var(--ui-2); color: var(--accent); }
+.ta-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 6px; font-size: 12px; color: var(--muted); }
+.f-v { font: 500 12px var(--mono); color: var(--fg); margin-right: 6px; }
+.f-b { font-weight: 600; padding: 1px 8px; border-radius: 99px; margin-left: auto; }
+.f-b.ok { background: var(--ok-bg); color: var(--plus); }
+.f-b.bad { background: var(--bad-bg); color: var(--minus); }
+.ta-resize { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; }
+.ta-resize::after { content: ""; position: absolute; right: 7px; bottom: 7px; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); opacity: 0; }
+.ta:hover .ta-resize::after, .ta.sel .ta-resize::after { opacity: .7; }
+
+.tx-edit { position: absolute; margin: 0; padding: 0; border: 1px dashed var(--accent); outline: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--hand); line-height: 1.25; white-space: pre; min-width: 40px; }
+
+/* ---------- floating UI ---------- */
+.ui { position: fixed; z-index: 10; }
+.bar { background: var(--ui); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 2px; padding: 4px; }
+.col { flex-direction: column; }
+#top-left { top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; padding: 4px 12px 4px 6px; gap: 8px; }
+#top-right { top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; }
+#tools { left: 12px; top: 50%; transform: translateY(-50%); }
+#stylebar { left: 64px; top: 50%; transform: translateY(-50%); gap: 6px; padding: 8px 6px; }
+.brand-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--ui); display: grid; place-items: center; }
+.brand-mark svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.brand b { display: block; font-size: 14px; font-weight: 700; line-height: 1.1; }
+.brand span { display: block; font-size: 11px; color: var(--muted); }
+.tb { width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: none; border-radius: 8px; color: var(--fg); cursor: pointer; flex: none; }
+.tb:hover { background: var(--ui-2); }
+.tb[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.tb:disabled { opacity: .3; cursor: default; background: none; }
+.tb svg, .txtbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.txtbtn { height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; background: none; border-radius: 8px; cursor: pointer; font-weight: 500; white-space: nowrap; flex: none; }
+.txtbtn:hover { background: var(--ui-2); }
+.txtbtn.primary { background: var(--accent); color: var(--ui); }
+.txtbtn.primary:hover { filter: brightness(1.08); }
+.txtbtn.danger { color: var(--minus); }
+.sep { width: 1px; height: 22px; background: var(--line); margin: 0 3px; flex: none; }
+.col > .sep { width: 22px; height: 1px; margin: 3px 0; }
+#zoomv { width: 54px; font: 500 12px var(--mono); }
+.sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ui); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.wd { width: 28px; height: 28px; border: 0; background: none; border-radius: 7px; display: grid; place-items: center; cursor: pointer; color: var(--fg); padding: 0; }
+.wd:hover { background: var(--ui-2); }
+.wd[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.wd i { display: block; border-radius: 50%; background: currentColor; }
+.wd b { font-family: var(--hand); font-weight: 400; line-height: 1; }
+
+.menu-wrap { position: relative; }
+.menu { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; max-width: calc(100vw - 24px); background: var(--ui); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 1px; z-index: 20; }
+.menu h4 { margin: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; border-radius: 8px; cursor: pointer; }
+.menu button:hover { background: var(--ui-2); }
+.menu button small { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+.menu button[aria-pressed="true"] { color: var(--accent); font-weight: 600; }
+.menu .danger { color: var(--minus); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+.seg { display: flex; gap: 2px; padding: 0 4px 4px; }
+.seg button { flex: 1; text-align: center; }
+
+#hint { left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--muted); background: var(--ui); border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; }
+#hint kbd { font: 500 11px var(--mono); background: var(--ui-2); border-radius: 4px; padding: 0 4px; color: var(--fg); }
+#toast { left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--board); padding: 8px 14px; border-radius: 10px; font-weight: 500; box-shadow: var(--shadow); max-width: calc(100vw - 32px); text-align: center; z-index: 40; }
+
+#modal { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: grid; place-items: center; padding: 16px; }
+.modal-card { background: var(--ui); border-radius: 14px; box-shadow: var(--shadow); padding: 16px; width: min(720px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; }
+.modal-card h3 { margin: 0; font-size: 16px; }
+.modal-card p { margin: 0; color: var(--muted); font-size: 13px; }
+.modal-img { overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--board); min-height: 0; }
+.modal-img img { display: block; max-width: 100%; max-height: 58vh; margin: 0 auto; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.modal-actions .txtbtn { border: 1px solid var(--line); }
+
+@media (max-width: 720px) {
+  .hide-sm { display: none !important; }
+  #top-left { padding: 4px; }
+  #tools { left: 50%; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; max-width: calc(100vw - 24px); overflow-x: auto; box-sizing: border-box; }
+  #tools > .sep { width: 1px; height: 22px; margin: 0 3px; }
+  #stylebar { left: 50%; top: auto; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; padding: 6px 8px; max-width: calc(100vw - 24px); box-sizing: border-box; overflow-x: auto; }
+  #stylebar > .sep { width: 1px; height: 22px; margin: 0 3px; }
+  #toast { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tb, .txtbtn, .wd, .sw { transition: background-color .12s, box-shadow .12s; }
+}
+</style>
+</head>
+<body data-tool="pen">
+
+<div id="board" data-grid="dots">
+  <div id="world">
+    <div id="ta-layer"></div>
+    <svg id="ink" xmlns="http://www.w3.org/2000/svg"><g id="layer"></g><g id="selg"></g></svg>
+  </div>
+</div>
+
+<div class="ui bar brand" id="top-left">
+  <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 6h16M12 6v13"/></svg></div>
+  <div class="hide-sm"><b>Bảng T-Account</b><span id="status">Tự động lưu trên trình duyệt</span></div>
+</div>
+
+<div class="ui bar" id="top-right">
+  <button class="tb" id="btn-del" title="Xoá đối tượng đang chọn (Delete)" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+  <button class="tb" id="btn-undo" title="Hoàn tác (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/></svg></button>
+  <button class="tb" id="btn-redo" title="Làm lại (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3"/></svg></button>
+  <span class="sep"></span>
+  <button class="tb hide-sm" id="btn-zout" title="Thu nhỏ"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+  <button class="tb" id="zoomv" title="Vừa khung hình với nội dung">100%</button>
+  <button class="tb hide-sm" id="btn-zin" title="Phóng to"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>
+  <span class="sep"></span>
+  <div class="menu-wrap">
+    <button class="txtbtn" id="btn-presets" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg><span>Mẫu<span class="hide-sm"> giao dịch</span></span></button>
+    <div class="menu" id="menu-presets" hidden></div>
+  </div>
+  <button class="txtbtn primary" id="btn-export" title="Xuất bảng thành ảnh PNG"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></svg><span class="hide-sm">Xuất ảnh</span></button>
+  <div class="menu-wrap">
+    <button class="tb" id="btn-more" title="Tuỳ chọn khác" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+    <div class="menu" id="menu-more" hidden>
+      <h4>Nền bảng</h4>
+      <div class="seg">
+        <button data-grid="dots">Chấm</button><button data-grid="lines">Ô kẻ</button><button data-grid="none">Trơn</button>
+      </div>
+      <hr>
+      <h4>Tệp</h4>
+      <button id="btn-save-json">Lưu bảng ra tệp .json<small>Để mở lại trên máy khác</small></button>
+      <button id="btn-open-json">Mở tệp .json</button>
+      <hr>
+      <button id="btn-clear" class="danger">Xoá toàn bộ bảng<small>Có thể hoàn tác bằng Ctrl+Z</small></button>
+    </div>
+  </div>
+</div>
+
+<div class="ui bar col" id="tools" role="toolbar" aria-label="Công cụ vẽ">
+  <button class="tb" data-tool="select" title="Chọn / sửa tài khoản (V)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.5 1.2L9.5 18z"/></svg></button>
+  <button class="tb" data-tool="hand" title="Kéo bảng (H) — hoặc giữ Space"><svg viewBox="0 0 24 24"><path d="M8 12.5V5.5a1.5 1.5 0 013 0V11m0-7a1.5 1.5 0 013 0v7m0-5.5a1.5 1.5 0 013 0V13a7 7 0 01-7 7h-.6a6 6 0 01-5.2-3L3.4 13.9a1.5 1.5 0 012.5-1.6L8 14.5"/></svg></button>
+  <span class="sep"></span>
+  <button class="tb" data-tool="ta" title="Thêm tài khoản chữ T (K)"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg></button>
+  <button class="tb" data-tool="pen" title="Bút (P)"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 7l3 3"/></svg></button>
+  <button class="tb" data-tool="hl" title="Bút đánh dấu (M)"><svg viewBox="0 0 24 24"><path d="M9 14l-4 4h5l1.5-1.5M9 14l8-8 3 3-8 8zM4 21h16"/></svg></button>
+  <button class="tb" data-tool="eraser" title="Tẩy (E)"><svg viewBox="0 0 24 24"><path d="M9 20h11M5.5 14.5l8-8a2 2 0 012.8 0l2.2 2.2a2 2 0 010 2.8L12 18H9z"/></svg></button>
+  <span class="sep"></span>
+  <button class="tb" data-tool="arrow" title="Mũi tên (A)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg></button>
+  <button class="tb" data-tool="line" title="Đường thẳng (L)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button>
+  <button class="tb" data-tool="rect" title="Hình chữ nhật (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+  <button class="tb" data-tool="ellipse" title="Hình elip (O)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg></button>
+  <button class="tb" data-tool="text" title="Chữ viết (T)"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg></button>
+</div>
+
+<div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
+
+<div class="ui hide-sm" id="hint">Tài khoản chữ T: dùng <kbd>V</kbd> để nhập số · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui" id="toast" role="status" hidden></div>
+
+<div id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-labelledby="modal-title">
+    <h3 id="modal-title">Ảnh bảng T-Account</h3>
+    <p>Nếu nút Tải không hoạt động, nhấn chuột phải (hoặc nhấn giữ trên điện thoại) vào ảnh và chọn Lưu ảnh.</p>
+    <div class="modal-img"><img id="modal-img" alt="Ảnh xuất của bảng"></div>
+    <div class="modal-actions">
+      <button class="txtbtn" id="btn-copy-img">Sao chép ảnh</button>
+      <button class="txtbtn" id="btn-dl-img">Tải PNG</button>
+      <button class="txtbtn primary" id="btn-close-modal">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="dl-titles">
+  <option value="NHNN (Ngân hàng Trung ương)"></option>
+  <option value="Ngân hàng thương mại"></option>
+  <option value="Hộ gia đình"></option>
+  <option value="Doanh nghiệp"></option>
+  <option value="Chính phủ (Kho bạc)"></option>
+  <option value="Khu vực nước ngoài"></option>
+  <option value="Fed"></option>
+</datalist>
+<input type="file" id="file" accept=".json,application/json" hidden>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const HAND = '"Patrick Hand", "Comic Sans MS", cursive';
+const KEY = 'tboard.v1';
+const board = $('#board'), world = $('#world'), layer = $('#layer'), selg = $('#selg'), taLayer = $('#ta-layer');
+const mctx = document.createElement('canvas').getContext('2d');
+
+let S = { items: [], view: { x: 0, y: 0, z: 1 }, grid: 'dots' };
+let tool = 'pen', sel = null, op = null, editingId = null, spaceDown = false;
+const ST = { pen: { c: 'ink', w: 3 }, hl: { c: 'yellow', w: 18 }, shape: { c: 'blue', w: 2.5 }, text: { c: 'ink', w: 24 } };
+const WOPTS = { pen: [2, 3, 5, 8], hl: [10, 18, 28], shape: [1.5, 2.5, 4], text: [18, 24, 32, 44] };
+const COLORS = ['ink', 'red', 'blue', 'green', 'orange', 'purple', 'yellow'];
+const COLOR_NAMES = { ink: 'Mực', red: 'Đỏ', blue: 'Xanh dương', green: 'Xanh lá', orange: 'Cam', purple: 'Tím', yellow: 'Vàng' };
+const SHAPES = ['line', 'arrow', 'rect', 'ellipse'];
+
+const uid = () => 'i' + Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cvar = c => `var(--pen-${c})`;
+const cval = c => getComputedStyle(document.documentElement).getPropertyValue('--pen-' + c).trim() || '#000';
+const r1 = v => Math.round(v * 10) / 10;
+const byId = id => S.items.find(i => i.id === id);
+const taEl = id => taLayer.querySelector(`.ta[data-id="${id}"]`);
+const family = t => t === 'pen' ? 'pen' : t === 'hl' ? 'hl' : SHAPES.includes(t) ? 'shape' : t === 'text' ? 'text' : null;
+
+/* ---------- numbers ---------- */
+function num(s) {
+  s = String(s ?? '').trim().replace(/\s/g, '');
+  if (!s) return null;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+  else s = s.replace(',', '.');
+  const v = parseFloat(s);
+  if (isNaN(v)) return null;
+  return neg ? -v : v;
+}
+function fmt(v) {
+  const r = Math.round(v * 100) / 100;
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r).toLocaleString('vi-VN');
+}
+const total = rows => rows.reduce((a, r) => { const v = num(r.am); return v === null ? a : a + (r.s === '-' ? -v : v); }, 0);
+
+/* ---------- storage & history ---------- */
+let saveT = null;
+function saveSoon() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); $('#status').textContent = 'Đã lưu trên trình duyệt này'; }
+    catch (e) { $('#status').textContent = 'Không lưu được — hãy xuất tệp .json'; }
+  }, 350);
+}
+let hist = [], hi = -1;
+const snap = () => JSON.stringify(S.items);
+function commit() {
+  const s = snap();
+  if (hist[hi] === s) return;
+  hist = hist.slice(0, hi + 1); hist.push(s);
+  if (hist.length > 150) hist.shift();
+  hi = hist.length - 1;
+  saveSoon(); updUndo();
+}
+function restore(s) { S.items = JSON.parse(s); if (sel && !byId(sel)) sel = null; renderAll(); saveSoon(); updUndo(); }
+function undo() { if (hi > 0) { hi--; restore(hist[hi]); } }
+function redo() { if (hi < hist.length - 1) { hi++; restore(hist[hi]); } }
+function updUndo() { $('#btn-undo').disabled = hi <= 0; $('#btn-redo').disabled = hi >= hist.length - 1; }
+
+/* ---------- view ---------- */
+function applyView() {
+  const { x, y, z } = S.view;
+  world.style.transform = `translate(${x}px,${y}px) scale(${z})`;
+  const g = 24 * z;
+  board.style.backgroundSize = `${g}px ${g}px`;
+  board.style.backgroundPosition = `${x}px ${y}px`;
+  $('#zoomv').textContent = Math.round(z * 100) + '%';
+}
+function toWorld(cx, cy) {
+  const r = board.getBoundingClientRect();
+  return [(cx - r.left - S.view.x) / S.view.z, (cy - r.top - S.view.y) / S.view.z];
+}
+function zoomAt(cx, cy, nz) {
+  nz = Math.min(4, Math.max(0.15, nz));
+  const r = board.getBoundingClientRect();
+  const px = cx - r.left, py = cy - r.top, { x, y, z } = S.view;
+  S.view = { x: px - (px - x) * nz / z, y: py - (py - y) * nz / z, z: nz };
+  applyView(); saveSoon();
+}
+function contentBox() {
+  let b = null;
+  for (const it of S.items) {
+    const k = bbox(it);
+    b = b ? [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])] : k;
+  }
+  return b;
+}
+function fitView() {
+  const b = contentBox(), W = board.clientWidth, H = board.clientHeight;
+  if (!b) { S.view = { x: W / 2 - 300, y: H / 2 - 200, z: 1 }; applyView(); return; }
+  const small = W < 720;
+  const aw = W - (small ? 32 : 180), ah = H - (small ? 200 : 160);
+  const z = Math.min(1.25, Math.max(0.15, Math.min(aw / (b[2] - b[0]), ah / (b[3] - b[1]))));
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  S.view = { x: (small ? W / 2 : 50 + (W + 60) / 2) - cx * z, y: (small ? H / 2 - 30 : H / 2 + 20) - cy * z, z };
+  applyView(); saveSoon();
+}
+
+/* ---------- geometry ---------- */
+function pathD(p) {
+  if (p.length === 1) { const [x, y] = p[0]; return `M${x} ${y}L${x + 0.01} ${y}`; }
+  let d = `M${p[0][0]} ${p[0][1]}`;
+  for (let i = 1; i < p.length - 1; i++) {
+    d += `Q${p[i][0]} ${p[i][1]} ${r1((p[i][0] + p[i + 1][0]) / 2)} ${r1((p[i][1] + p[i + 1][1]) / 2)}`;
+  }
+  const l = p[p.length - 1];
+  return d + `L${l[0]} ${l[1]}`;
+}
+function shapeD(it) {
+  const { x1, y1, x2, y2 } = it;
+  if (it.type === 'line') return `M${x1} ${y1}L${x2} ${y2}`;
+  if (it.type === 'arrow') {
+    const a = Math.atan2(y2 - y1, x2 - x1), L = Math.max(12, it.w * 4.5);
+    const h1 = [r1(x2 - L * Math.cos(a - 0.45)), r1(y2 - L * Math.sin(a - 0.45))];
+    const h2 = [r1(x2 - L * Math.cos(a + 0.45)), r1(y2 - L * Math.sin(a + 0.45))];
+    return `M${x1} ${y1}L${x2} ${y2}M${h1[0]} ${h1[1]}L${x2} ${y2}L${h2[0]} ${h2[1]}`;
+  }
+  const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+  if (it.type === 'rect') return `M${x} ${y}h${w}v${h}h${-w}Z`;
+  const rx = w / 2 || 0.01, ry = h / 2 || 0.01, cx = x + rx, cy = y + ry;
+  return `M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+}
+function textSize(it) {
+  mctx.font = `${it.size}px ${HAND}`;
+  const lines = it.text.split('\n');
+  let w = 0;
+  for (const l of lines) w = Math.max(w, mctx.measureText(l).width);
+  return { w: Math.max(w, 12), h: lines.length * it.size * 1.25, lines };
+}
+function bbox(it) {
+  if (it.type === 'stroke') {
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+    for (const [x, y] of it.pts) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
+    const p = it.w / 2; return [a - p, b - p, c + p, d + p];
+  }
+  if (it.type === 'text') { const m = textSize(it); return [it.x, it.y, it.x + m.w, it.y + m.h]; }
+  if (it.type === 'ta') { const el = taEl(it.id); return [it.x, it.y, it.x + it.w, it.y + (el ? el.offsetHeight : 200)]; }
+  const p = it.w / 2 + (it.type === 'arrow' ? it.w * 4.5 : 0);
+  return [Math.min(it.x1, it.x2) - p, Math.min(it.y1, it.y2) - p, Math.max(it.x1, it.x2) + p, Math.max(it.y1, it.y2) + p];
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
+  let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+function hit(it, x, y, tol) {
+  if (it.type === 'ta') return false;
+  if (it.type === 'text') { const b = bbox(it); return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol; }
+  const t = tol + it.w / 2;
+  if (it.type === 'stroke') {
+    const p = it.pts;
+    if (p.length === 1) return Math.hypot(x - p[0][0], y - p[0][1]) <= t;
+    for (let i = 1; i < p.length; i++) if (segDist(x, y, p[i - 1][0], p[i - 1][1], p[i][0], p[i][1]) <= t) return true;
+    return false;
+  }
+  const { x1, y1, x2, y2 } = it;
+  if (it.type === 'line' || it.type === 'arrow') return segDist(x, y, x1, y1, x2, y2) <= t;
+  const l = Math.min(x1, x2), r = Math.max(x1, x2), tp = Math.min(y1, y2), bt = Math.max(y1, y2);
+  if (it.type === 'rect') {
+    return segDist(x, y, l, tp, r, tp) <= t || segDist(x, y, r, tp, r, bt) <= t || segDist(x, y, r, bt, l, bt) <= t || segDist(x, y, l, bt, l, tp) <= t;
+  }
+  const rx = (r - l) / 2 || 0.01, ry = (bt - tp) / 2 || 0.01;
+  const k = Math.hypot((x - l - rx) / rx, (y - tp - ry) / ry);
+  return Math.abs(k - 1) * Math.min(rx, ry) <= t;
+}
+function topHit(x, y, tol) {
+  for (let i = S.items.length - 1; i >= 0; i--) if (hit(S.items[i], x, y, tol)) return S.items[i];
+  return null;
+}
+function moveItem(it, dx, dy) {
+  if (it.type === 'stroke') it.pts = it.pts.map(([x, y]) => [r1(x + dx), r1(y + dy)]);
+  else if (it.type === 'text' || it.type === 'ta') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
+  else { it.x1 = r1(it.x1 + dx); it.y1 = r1(it.y1 + dy); it.x2 = r1(it.x2 + dx); it.y2 = r1(it.y2 + dy); }
+}
+
+/* ---------- rendering: ink ---------- */
+function itemSvg(it) {
+  if (it.type === 'ta' || it.id === editingId) return '';
+  if (it.type === 'text') {
+    const { lines } = textSize(it);
+    return `<text font-family='${HAND}' font-size="${it.size}" fill="${cvar(it.color)}">` +
+      lines.map((l, i) => `<tspan x="${it.x}" y="${r1(it.y + it.size * 0.9 + i * it.size * 1.25)}">${esc(l) || ' '}</tspan>`).join('') + '</text>';
+  }
+  const d = it.type === 'stroke' ? pathD(it.pts) : shapeD(it);
+  return `<path d="${d}" stroke="${cvar(it.color)}" stroke-width="${it.w}" fill="none" stroke-linecap="round" stroke-linejoin="round"${it.hl ? ' opacity=".38"' : ''}/>`;
+}
+function renderSvg() { layer.innerHTML = S.items.map(itemSvg).join(''); renderSel(); }
+function renderSel() {
+  selg.innerHTML = '';
+  taLayer.querySelectorAll('.ta').forEach(n => n.classList.toggle('sel', n.dataset.id === sel));
+  $('#btn-del').hidden = !sel;
+  const it = sel && byId(sel);
+  if (!it || it.type === 'ta') return;
+  const b = bbox(it), p = 6 / S.view.z;
+  selg.innerHTML = `<rect x="${b[0] - p}" y="${b[1] - p}" width="${b[2] - b[0] + 2 * p}" height="${b[3] - b[1] + 2 * p}" fill="none" stroke="var(--accent)" stroke-width="${1.5 / S.view.z}" stroke-dasharray="${5 / S.view.z} ${4 / S.view.z}" rx="${4 / S.view.z}"/>`;
+}
+function select(id) { sel = id; renderSel(); }
+
+/* ---------- rendering: T-accounts ---------- */
+const newRow = (s = '+', lb = '', am = '', st = '') => ({ s, lb, am, st });
+const GRIP = '<svg viewBox="0 0 14 14"><circle cx="4" cy="3" r="1.3"/><circle cx="10" cy="3" r="1.3"/><circle cx="4" cy="7" r="1.3"/><circle cx="10" cy="7" r="1.3"/><circle cx="4" cy="11" r="1.3"/><circle cx="10" cy="11" r="1.3"/></svg>';
+function rowHtml(r, i) {
+  const neg = r.s === '-';
+  return `<div class="ta-row${neg ? ' neg' : ''}" data-i="${i}">` +
+    `<input class="r-st" value="${esc(r.st)}" placeholder="#" title="Số thứ tự bút toán" aria-label="Bước">` +
+    `<button class="r-sg ${neg ? 'neg' : 'pos'}" title="Đổi tăng/giảm">${neg ? '−' : '+'}</button>` +
+    `<input class="r-lb" value="${esc(r.lb)}" placeholder="Khoản mục" aria-label="Khoản mục">` +
+    `<input class="r-am" value="${esc(r.am)}" placeholder="0" inputmode="decimal" aria-label="Số tiền">` +
+    `<button class="r-x" title="Xoá dòng">×</button></div>`;
+}
+function buildTA(it) {
+  const el = document.createElement('div');
+  el.className = 'ta' + (sel === it.id ? ' sel' : '');
+  el.dataset.id = it.id;
+  el.style.cssText = `left:${it.x}px;top:${it.y}px;width:${it.w}px`;
+  const col = side => `<div class="ta-col" data-side="${side}">${it[side].map(rowHtml).join('')}<button class="ta-add" data-side="${side}">+ Thêm dòng</button></div>`;
+  el.innerHTML =
+    `<div class="ta-top"><span class="ta-grip" title="Kéo để di chuyển">${GRIP}</span>` +
+    `<input class="ta-title" value="${esc(it.title)}" placeholder="Tên khu vực (VD: NHNN)" list="dl-titles" aria-label="Tên tài khoản">` +
+    `<button class="ta-x" title="Xoá tài khoản">×</button></div>` +
+    `<div class="ta-heads"><input class="ta-h" data-side="L" value="${esc(it.hL)}" aria-label="Tiêu đề bên trái"><input class="ta-h" data-side="R" value="${esc(it.hR)}" aria-label="Tiêu đề bên phải"></div>` +
+    `<div class="ta-body">${col('L')}${col('R')}</div><div class="ta-foot"></div><div class="ta-resize" title="Kéo để đổi độ rộng"></div>`;
+  updateFoot(el, it);
+  return el;
+}
+function updateFoot(el, it) {
+  const has = [...it.L, ...it.R].some(r => num(r.am) !== null);
+  const foot = el.querySelector('.ta-foot');
+  if (!has) { foot.innerHTML = '<span class="f-k">Nhập số tiền để kiểm tra cân đối</span>'; return; }
+  const tl = total(it.L), tr = total(it.R), ok = Math.abs(tl - tr) < 1e-9;
+  const short = s => { s = (s || '').trim(); return s.length > 22 ? s.slice(0, 21) + '…' : s; };
+  foot.innerHTML =
+    `<span class="f-k">Δ ${esc(short(it.hL) || 'Trái')}</span><span class="f-v">${fmt(tl)}</span>` +
+    `<span class="f-k">Δ ${esc(short(it.hR) || 'Phải')}</span><span class="f-v">${fmt(tr)}</span>` +
+    `<span class="f-b ${ok ? 'ok' : 'bad'}">${ok ? 'Cân đối' : 'Lệch ' + fmt(Math.abs(tl - tr)).replace(/^[+−]/, '')}</span>`;
+}
+function renderTAs() {
+  taLayer.innerHTML = '';
+  for (const it of S.items) if (it.type === 'ta') taLayer.appendChild(buildTA(it));
+}
+function replaceTA(it, fSide, fIdx) {
+  const old = taEl(it.id), el = buildTA(it);
+  if (old) old.replaceWith(el); else taLayer.appendChild(el);
+  if (fSide != null) {
+    const r = el.querySelectorAll(`.ta-col[data-side="${fSide}"] .ta-row`)[fIdx];
+    if (r) r.querySelector('.r-lb').focus();
+  }
+}
+function renderAll() { renderTAs(); renderSvg(); }
+
+function newTA(x, y, o = {}) {
+  return { id: uid(), type: 'ta', x: r1(x), y: r1(y), w: o.w || 620, title: o.title || '', hL: o.hL || 'Tài sản', hR: o.hR || 'Nợ phải trả + Vốn',
+    L: o.L || [newRow()], R: o.R || [newRow()] };
+}
+function removeItem(id) {
+  S.items = S.items.filter(i => i.id !== id);
+  const el = taEl(id); if (el) el.remove();
+  if (sel === id) sel = null;
+  renderSvg();
+}
+
+taLayer.addEventListener('input', e => {
+  const t = e.target, el = t.closest('.ta'); if (!el) return;
+  const it = byId(el.dataset.id); if (!it) return;
+  if (t.classList.contains('ta-title')) it.title = t.value;
+  else if (t.classList.contains('ta-h')) it[t.dataset.side === 'L' ? 'hL' : 'hR'] = t.value;
+  else {
+    const row = t.closest('.ta-row'); if (!row) return;
+    const r = it[row.closest('.ta-col').dataset.side][+row.dataset.i];
+    if (t.classList.contains('r-lb')) r.lb = t.value;
+    else if (t.classList.contains('r-am')) r.am = t.value;
+    else if (t.classList.contains('r-st')) r.st = t.value;
+  }
+  updateFoot(el, it); saveSoon();
+});
+taLayer.addEventListener('change', () => commit());
+taLayer.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const el = b.closest('.ta'), it = byId(el.dataset.id); if (!it) return;
+  if (b.classList.contains('ta-x')) { removeItem(it.id); commit(); return; }
+  if (b.classList.contains('ta-add')) { const s = b.dataset.side; it[s].push(newRow()); commit(); replaceTA(it, s, it[s].length - 1); return; }
+  const row = b.closest('.ta-row'); if (!row) return;
+  const side = row.closest('.ta-col').dataset.side, i = +row.dataset.i;
+  if (b.classList.contains('r-sg')) { it[side][i].s = it[side][i].s === '-' ? '+' : '-'; commit(); replaceTA(it); }
+  else if (b.classList.contains('r-x')) { it[side].splice(i, 1); commit(); replaceTA(it); }
+});
+taLayer.addEventListener('keydown', e => {
+  const row = e.target.closest('.ta-row');
+  if (e.key !== 'Enter' || !row) return;
+  e.preventDefault();
+  const it = byId(e.target.closest('.ta').dataset.id), side = row.closest('.ta-col').dataset.side, i = +row.dataset.i;
+  it[side].splice(i + 1, 0, newRow(it[side][i].s, '', '', it[side][i].st));
+  commit(); replaceTA(it, side, i + 1);
+});
+
+/* ---------- text editing ---------- */
+function editText(it, isNew) {
+  editingId = it.id; renderSvg();
+  const ta = document.createElement('textarea');
+  ta.className = 'tx-edit';
+  ta.value = it.text;
+  ta.style.cssText = `left:${it.x}px;top:${it.y}px;font-size:${it.size}px;color:${cvar(it.color)}`;
+  const fit = () => { const m = textSize({ ...it, text: ta.value || ' ' }); ta.style.width = (m.w + it.size) + 'px'; ta.style.height = m.h + 'px'; };
+  fit();
+  ta.addEventListener('input', fit);
+  ta.addEventListener('keydown', e => { if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) ta.blur(); e.stopPropagation(); });
+  ta.addEventListener('pointerdown', e => e.stopPropagation());
+  ta.addEventListener('blur', () => {
+    const v = ta.value.replace(/\s+$/, '');
+    ta.remove(); editingId = null;
+    if (!v) { removeItem(it.id); if (!isNew) commit(); }
+    else { it.text = v; commit(); }
+    renderSvg();
+  }, { once: true });
+  world.appendChild(ta);
+  setTimeout(() => ta.focus(), 0);
+}
+
+/* ---------- pointer handling ---------- */
+const ptrs = new Map();
+let pinch = null, live = null;
+function liveEl(it) {
+  live = document.createElementNS(NS, 'path');
+  live.setAttribute('stroke', cvar(it.color)); live.setAttribute('stroke-width', it.w);
+  live.setAttribute('fill', 'none'); live.setAttribute('stroke-linecap', 'round'); live.setAttribute('stroke-linejoin', 'round');
+  if (it.hl) live.setAttribute('opacity', '.38');
+  layer.appendChild(live);
+}
+function cancelOp() {
+  if (live) { live.remove(); live = null; }
+  if (op && op.type === 'erase' && op.removed) commit();
+  op = null; document.body.classList.remove('panning');
+}
+function startPan(e) { op = { type: 'pan', lx: e.clientX, ly: e.clientY }; document.body.classList.add('panning'); }
+
+board.addEventListener('pointerdown', e => {
+  if (e.target.closest('.tx-edit')) return;
+  if (e.pointerType === 'touch') {
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2) {
+      cancelOp();
+      const [a, b] = [...ptrs.values()];
+      pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), c: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], v: { ...S.view } };
+      return;
+    }
+    if (ptrs.size > 2) return;
+  }
+  const [x, y] = toWorld(e.clientX, e.clientY);
+  const taNode = e.target.closest('.ta');
+  if (taNode) {
+    const it = byId(taNode.dataset.id);
+    if (sel !== it.id) select(it.id);
+    if (e.target.closest('.ta-grip') || e.target.classList.contains('ta-top') || e.target.classList.contains('ta-heads') || e.target.classList.contains('ta-body') || e.target.classList.contains('ta-col')) {
+      e.preventDefault();
+      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      op = { type: 'move', it, lx: x, ly: y, moved: false };
+    } else if (e.target.closest('.ta-resize')) {
+      e.preventDefault();
+      op = { type: 'resize', it, sx: x, w0: it.w, moved: false };
+    } else return;
+    board.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (e.button === 1 || spaceDown || tool === 'hand') { e.preventDefault(); startPan(e); board.setPointerCapture(e.pointerId); return; }
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  board.setPointerCapture(e.pointerId);
+  const tol = 8 / S.view.z;
+  const st = ST[family(tool)];
+  switch (tool) {
+    case 'select': {
+      const h = topHit(x, y, tol);
+      if (h) { select(h.id); op = { type: 'move', it: h, lx: x, ly: y, moved: false }; }
+      else { select(null); startPan(e); }
+      break;
+    }
+    case 'pen': case 'hl': {
+      const it = { id: uid(), type: 'stroke', pts: [[r1(x), r1(y)]], color: st.c, w: st.w, hl: tool === 'hl' || undefined };
+      op = { type: 'draw', it }; liveEl(it); live.setAttribute('d', pathD(it.pts));
+      break;
+    }
+    case 'line': case 'arrow': case 'rect': case 'ellipse': {
+      const it = { id: uid(), type: tool, x1: r1(x), y1: r1(y), x2: r1(x), y2: r1(y), color: st.c, w: st.w };
+      op = { type: 'shape', it }; liveEl(it);
+      break;
+    }
+    case 'eraser': op = { type: 'erase', removed: false }; eraseAt(x, y); break;
+    case 'text': op = { type: 'text', x, y }; break;
+    case 'ta': {
+      const it = newTA(x - 310, y - 20);
+      S.items.push(it); commit(); replaceTA(it);
+      setTool('select'); select(it.id);
+      setTimeout(() => { const t = taEl(it.id); t && t.querySelector('.ta-title').focus(); }, 0);
+      break;
+    }
+  }
+});
+
+function eraseAt(x, y) {
+  const tol = 6 / S.view.z;
+  const before = S.items.length;
+  S.items = S.items.filter(it => !hit(it, x, y, tol));
+  if (S.items.length !== before) { op.removed = true; if (sel && !byId(sel)) sel = null; renderSvg(); }
+}
+
+window.addEventListener('pointermove', e => {
+  if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pinch && ptrs.size >= 2) {
+    const [a, b] = [...ptrs.values()];
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]), c = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const nz = Math.min(4, Math.max(0.15, pinch.v.z * d / (pinch.d || 1)));
+    const wx = (pinch.c[0] - pinch.v.x) / pinch.v.z, wy = (pinch.c[1] - pinch.v.y) / pinch.v.z;
+    S.view = { x: c[0] - wx * nz, y: c[1] - wy * nz, z: nz };
+    applyView(); return;
+  }
+  if (!op) return;
+  if (op.type === 'pan') {
+    S.view.x += e.clientX - op.lx; S.view.y += e.clientY - op.ly; op.lx = e.clientX; op.ly = e.clientY;
+    applyView(); return;
+  }
+  const [x, y] = toWorld(e.clientX, e.clientY);
+  if (op.type === 'draw') {
+    const p = op.it.pts, l = p[p.length - 1];
+    if (Math.hypot(x - l[0], y - l[1]) * S.view.z < 1.5) return;
+    p.push([r1(x), r1(y)]); live.setAttribute('d', pathD(p));
+  } else if (op.type === 'shape') {
+    const it = op.it;
+    let nx = x, ny = y;
+    if (e.shiftKey) {
+      const dx = x - it.x1, dy = y - it.y1;
+      if (it.type === 'line' || it.type === 'arrow') {
+        const a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(dx, dy);
+        nx = it.x1 + len * Math.cos(a); ny = it.y1 + len * Math.sin(a);
+      } else { const s = Math.max(Math.abs(dx), Math.abs(dy)); nx = it.x1 + Math.sign(dx || 1) * s; ny = it.y1 + Math.sign(dy || 1) * s; }
+    }
+    it.x2 = r1(nx); it.y2 = r1(ny); live.setAttribute('d', shapeD(it));
+  } else if (op.type === 'move') {
+    const dx = x - op.lx, dy = y - op.ly; if (!dx && !dy) return;
+    op.lx = x; op.ly = y; op.moved = true;
+    moveItem(op.it, dx, dy);
+    if (op.it.type === 'ta') { const el = taEl(op.it.id); el.style.left = op.it.x + 'px'; el.style.top = op.it.y + 'px'; }
+    else renderSvg();
+  } else if (op.type === 'resize') {
+    op.it.w = Math.round(Math.max(340, op.w0 + x - op.sx)); op.moved = true;
+    taEl(op.it.id).style.width = op.it.w + 'px';
+  } else if (op.type === 'erase') eraseAt(x, y);
+});
+
+function endPointer(e) {
+  ptrs.delete(e.pointerId);
+  if (pinch) { if (ptrs.size < 2) { pinch = null; saveSoon(); } return; }
+  if (!op) return;
+  const o = op; op = null;
+  document.body.classList.remove('panning');
+  if (o.type === 'pan') saveSoon();
+  else if (o.type === 'draw') { live.remove(); live = null; S.items.push(o.it); commit(); renderSvg(); }
+  else if (o.type === 'shape') {
+    live.remove(); live = null;
+    if (Math.hypot(o.it.x2 - o.it.x1, o.it.y2 - o.it.y1) * S.view.z > 3) { S.items.push(o.it); commit(); }
+    renderSvg();
+  }
+  else if (o.type === 'move' || o.type === 'resize') { if (o.moved) { commit(); renderSel(); } }
+  else if (o.type === 'erase') { if (o.removed) commit(); }
+  else if (o.type === 'text' && e.type === 'pointerup') {
+    const h = topHit(o.x, o.y, 4 / S.view.z);
+    if (h && h.type === 'text') editText(h, false);
+    else {
+      const st = ST.text;
+      const it = { id: uid(), type: 'text', x: r1(o.x), y: r1(o.y - st.w * 0.6), text: '', color: st.c, size: st.w };
+      S.items.push(it); editText(it, true);
+    }
+  }
+}
+window.addEventListener('pointerup', endPointer);
+window.addEventListener('pointercancel', endPointer);
+
+board.addEventListener('dblclick', e => {
+  if (tool !== 'select' || e.target.closest('.ta')) return;
+  const [x, y] = toWorld(e.clientX, e.clientY);
+  const h = topHit(x, y, 6 / S.view.z);
+  if (h && h.type === 'text') editText(h, false);
+});
+board.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, S.view.z * Math.exp(-e.deltaY * 0.01));
+  else { S.view.x -= e.deltaX; S.view.y -= e.deltaY; applyView(); saveSoon(); }
+}, { passive: false });
+
+/* ---------- tools & style bar ---------- */
+function setTool(t) {
+  tool = t;
+  document.body.dataset.tool = t;
+  document.querySelectorAll('#tools .tb').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t));
+  if (t !== 'select') select(null);
+  renderStyleBar();
+}
+function renderStyleBar() {
+  const f = family(tool), bar = $('#stylebar');
+  if (!f) { bar.hidden = true; return; }
+  bar.hidden = false;
+  const st = ST[f];
+  const colors = f === 'hl' ? ['yellow', 'green', 'blue', 'red', 'orange', 'purple'] : COLORS;
+  let h = colors.map(c => `<button class="sw" data-c="${c}" style="background:${cvar(c)}" title="${COLOR_NAMES[c]}" aria-label="${COLOR_NAMES[c]}" aria-pressed="${st.c === c}"></button>`).join('');
+  h += '<span class="sep"></span>';
+  h += WOPTS[f].map(w => {
+    const inner = f === 'text' ? `<b style="font-size:${Math.round(10 + (w - 18) / 2)}px">A</b>` : `<i style="width:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px;height:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px"></i>`;
+    return `<button class="wd" data-w="${w}" title="${f === 'text' ? 'Cỡ chữ ' : 'Nét '}${w}" aria-pressed="${st.w === w}">${inner}</button>`;
+  }).join('');
+  bar.innerHTML = h;
+}
+$('#stylebar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const st = ST[family(tool)];
+  if (b.dataset.c) st.c = b.dataset.c;
+  if (b.dataset.w) st.w = +b.dataset.w;
+  renderStyleBar();
+});
+$('#tools').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
+
+/* ---------- presets ---------- */
+const P = (s, lb, am) => [s, lb, am];
+const PRESETS = [
+  { name: 'NHNN mua trái phiếu Chính phủ qua OMO', note: 'NHNN mua 100 TPCP từ NHTM (bơm tiền)', accts: [
+    { title: 'NHNN (Ngân hàng Trung ương)', L: [P('+', 'Trái phiếu Chính phủ', '100')], R: [P('+', 'Dự trữ của NHTM', '100')] },
+    { title: 'Ngân hàng thương mại', L: [P('-', 'Trái phiếu Chính phủ', '100'), P('+', 'Dự trữ tại NHNN', '100')], R: [] }] },
+  { name: 'NHNN bán trái phiếu Chính phủ qua OMO', note: 'NHNN bán 100 TPCP cho NHTM (hút tiền)', accts: [
+    { title: 'NHNN (Ngân hàng Trung ương)', L: [P('-', 'Trái phiếu Chính phủ', '100')], R: [P('-', 'Dự trữ của NHTM', '100')] },
+    { title: 'Ngân hàng thương mại', L: [P('+', 'Trái phiếu Chính phủ', '100'), P('-', 'Dự trữ tại NHNN', '100')], R: [] }] },
+  { name: 'Người dân gửi tiền mặt vào ngân hàng', note: 'Hộ gia đình gửi 50 tiền mặt vào NHTM', accts: [
+    { title: 'Hộ gia đình', L: [P('-', 'Tiền mặt', '50'), P('+', 'Tiền gửi ngân hàng', '50')], R: [] },
+    { title: 'Ngân hàng thương mại', L: [P('+', 'Tiền mặt trong két (dự trữ)', '50')], R: [P('+', 'Tiền gửi của khách hàng', '50')] }] },
+  { name: 'Ngân hàng cho vay (tạo tiền gửi)', note: 'NHTM cho doanh nghiệp vay 80', accts: [
+    { title: 'Ngân hàng thương mại', L: [P('+', 'Cho vay', '80')], R: [P('+', 'Tiền gửi của DN', '80')] },
+    { title: 'Doanh nghiệp', L: [P('+', 'Tiền gửi ngân hàng', '80')], R: [P('+', 'Nợ vay ngân hàng', '80')] }] },
+  { name: 'NHNN mua ngoại tệ từ NHTM', note: 'NHNN mua ngoại tệ trị giá 100 (VND) từ NHTM', accts: [
+    { title: 'NHNN (Ngân hàng Trung ương)', L: [P('+', 'Dự trữ ngoại hối', '100')], R: [P('+', 'Dự trữ của NHTM', '100')] },
+    { title: 'Ngân hàng thương mại', L: [P('-', 'Ngoại tệ', '100'), P('+', 'Dự trữ tại NHNN', '100')], R: [] }] },
+  { name: 'Kho bạc phát hành trái phiếu, NHTM mua', note: 'Kho bạc bán 100 TPCP cho NHTM, tiền về tài khoản Kho bạc tại NHNN', accts: [
+    { title: 'Chính phủ (Kho bạc)', L: [P('+', 'Tiền gửi tại NHNN', '100')], R: [P('+', 'Trái phiếu Chính phủ', '100')] },
+    { title: 'Ngân hàng thương mại', L: [P('+', 'Trái phiếu Chính phủ', '100'), P('-', 'Dự trữ tại NHNN', '100')], R: [] },
+    { title: 'NHNN (Ngân hàng Trung ương)', L: [], R: [P('-', 'Dự trữ của NHTM', '100'), P('+', 'Tiền gửi của Kho bạc', '100')] }] },
+  { name: 'Bộ trống: NHNN – NHTM – Hộ gia đình', note: '', accts: [
+    { title: 'NHNN (Ngân hàng Trung ương)' }, { title: 'Ngân hàng thương mại' }, { title: 'Hộ gia đình' }] },
+];
+function nextStep() {
+  let m = 0;
+  for (const it of S.items) if (it.type === 'ta') for (const r of [...it.L, ...it.R]) { const v = parseInt(r.st, 10); if (v > m) m = v; }
+  return m + 1;
+}
+function insertPreset(p, at) {
+  const step = p.note ? String(nextStep()) : '';
+  const n = p.accts.length, W = 620, G = 50;
+  const cb = at ? null : contentBox();
+  let x0, y0;
+  if (cb) { x0 = cb[0]; y0 = cb[3] + 140; }
+  else { const [cx, cy] = at || toWorld(board.clientWidth / 2, board.clientHeight / 2); x0 = cx - (n * W + (n - 1) * G) / 2; y0 = cy - 110; }
+  const made = [];
+  if (p.note) {
+    made.push({ id: uid(), type: 'text', x: r1(x0), y: r1(y0 - 56), text: `(${step}) ${p.note}`, color: 'blue', size: 26 });
+  }
+  p.accts.forEach((a, k) => {
+    const rows = side => a[side] ? (a[side].length ? a[side].map(([s, lb, am]) => newRow(s, lb, am, step)) : [newRow('+', '', '', step)]) : [newRow()];
+    made.push(newTA(x0 + k * (W + G), y0, { title: a.title, L: rows('L'), R: rows('R') }));
+  });
+  S.items.push(...made);
+  commit(); renderAll();
+  if (cb) {
+    let b = null;
+    for (const it of made) { const k = bbox(it); b = b ? [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])] : k; }
+    const W2 = board.clientWidth, H2 = board.clientHeight, z = Math.min(S.view.z, (W2 - 40) / (b[2] - b[0]), (H2 - 200) / (b[3] - b[1]));
+    S.view = { x: W2 / 2 - (b[0] + b[2]) / 2 * z, y: H2 / 2 - (b[1] + b[3]) / 2 * z, z: Math.max(0.15, z) };
+    applyView(); renderSel(); saveSoon();
+  }
+  return made;
+}
+$('#menu-presets').innerHTML = '<h4>Chèn giao dịch mẫu (số liệu giả định)</h4>' +
+  PRESETS.map((p, i) => `<button data-p="${i}">${esc(p.name)}${p.note ? `<small>${esc(p.note)}</small>` : '<small>3 tài khoản trống để tự nhập</small>'}</button>`).join('');
+$('#menu-presets').addEventListener('click', e => {
+  const b = e.target.closest('[data-p]'); if (!b) return;
+  closeMenus(); setTool('select'); insertPreset(PRESETS[+b.dataset.p]);
+  toast('Đã chèn — sửa trực tiếp số liệu cho đúng đề bài');
+});
+
+/* ---------- menus ---------- */
+function closeMenus() {
+  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+  document.querySelectorAll('[aria-haspopup]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  clearArm();
+}
+function toggleMenu(btn, menu) {
+  const open = menu.hidden; closeMenus();
+  if (open) { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
+}
+$('#btn-presets').addEventListener('click', e => { e.stopPropagation(); toggleMenu(e.currentTarget, $('#menu-presets')); });
+$('#btn-more').addEventListener('click', e => { e.stopPropagation(); toggleMenu(e.currentTarget, $('#menu-more')); renderGridBtns(); });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu-wrap')) closeMenus(); });
+function renderGridBtns() { document.querySelectorAll('[data-grid]').forEach(b => b.tagName === 'BUTTON' && b.setAttribute('aria-pressed', b.dataset.grid === S.grid)); }
+$('#menu-more').addEventListener('click', e => {
+  const g = e.target.closest('button[data-grid]');
+  if (g) { S.grid = g.dataset.grid; board.dataset.grid = S.grid; renderGridBtns(); saveSoon(); }
+});
+let armT = null;
+function clearArm() { clearTimeout(armT); const b = $('#btn-clear'); b.dataset.armed = ''; b.innerHTML = 'Xoá toàn bộ bảng<small>Có thể hoàn tác bằng Ctrl+Z</small>'; }
+$('#btn-clear').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (!b.dataset.armed) { b.dataset.armed = '1'; b.innerHTML = 'Nhấn lần nữa để xoá<small>Tất cả tài khoản và nét vẽ sẽ bị xoá</small>'; armT = setTimeout(clearArm, 4000); return; }
+  S.items = []; sel = null; commit(); renderAll(); closeMenus(); toast('Đã xoá bảng. Nhấn Ctrl+Z để khôi phục');
+});
+$('#btn-save-json').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ app: 'bang-t-account', version: 1, items: S.items }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'bang-t-account.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  closeMenus(); toast('Đang tải tệp .json (nếu trình duyệt cho phép)');
+});
+$('#btn-open-json').addEventListener('click', () => { closeMenus(); $('#file').click(); });
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result), items = Array.isArray(d) ? d : d.items;
+      if (!Array.isArray(items)) throw new Error();
+      S.items = items.filter(i => i && i.id && i.type); sel = null;
+      commit(); renderAll(); fitView(); toast('Đã mở bảng từ tệp');
+    } catch (err) { toast('Tệp không đúng định dạng của Bảng T-Account'); }
+  };
+  rd.readAsText(f); e.target.value = '';
+});
+
+/* ---------- export ---------- */
+function drawTA(ctx, it) {
+  const el = taEl(it.id); if (!el) return;
+  const R = el.getBoundingClientRect(), z = S.view.z;
+  const rel = n => { const r = n.getBoundingClientRect(); return { x: it.x + (r.left - R.left) / z, y: it.y + (r.top - R.top) / z, w: r.width / z, h: r.height / z }; };
+  const txt = (n, val) => {
+    if (!n || !val) return;
+    const b = rel(n), cs = getComputedStyle(n);
+    ctx.save();
+    if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
+      ctx.fillStyle = cs.backgroundColor; ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(b.x, b.y, b.w, b.h, b.h / 2) : ctx.rect(b.x, b.y, b.w, b.h); ctx.fill();
+    }
+    ctx.beginPath(); ctx.rect(b.x, b.y - 2, b.w, b.h + 4); ctx.clip();
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    ctx.fillStyle = cs.color; ctx.textBaseline = 'middle';
+    const pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+    let x = b.x + pl; ctx.textAlign = 'left';
+    if (cs.textAlign === 'right' || cs.textAlign === 'end') { x = b.x + b.w - pr; ctx.textAlign = 'right'; }
+    else if (cs.textAlign === 'center') { x = b.x + b.w / 2; ctx.textAlign = 'center'; }
+    ctx.fillText(val, x, b.y + b.h / 2 + 0.5);
+    ctx.restore();
+  };
+  txt(el.querySelector('.ta-title'), it.title);
+  el.querySelectorAll('.ta-h').forEach(n => txt(n, n.value));
+  el.querySelectorAll('.ta-row').forEach(r => {
+    const lb = r.querySelector('.r-lb'), am = r.querySelector('.r-am');
+    if (!lb.value && !am.value) return;
+    const stn = r.querySelector('.r-st');
+    txt(stn, stn.value ? `(${stn.value})` : '');
+    const sg = r.querySelector('.r-sg'); txt(sg, sg.textContent);
+    txt(lb, lb.value); txt(am, am.value);
+  });
+  const heads = el.querySelector('.ta-heads'), hb = rel(heads), hcs = getComputedStyle(heads);
+  const lw = parseFloat(hcs.borderBottomWidth) || 2.5;
+  ctx.fillStyle = hcs.borderBottomColor; ctx.fillRect(hb.x, hb.y + hb.h - lw, hb.w, lw);
+  const colR = el.querySelector('.ta-col[data-side="R"]'), cb = rel(colR), ccs = getComputedStyle(colR);
+  ctx.fillStyle = ccs.borderLeftColor; ctx.fillRect(cb.x, cb.y, parseFloat(ccs.borderLeftWidth) || 2.5, cb.h);
+  const foot = el.querySelector('.ta-foot'), fb = rel(foot);
+  ctx.save(); ctx.strokeStyle = getComputedStyle(foot).borderTopColor; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(fb.x, fb.y + 0.5); ctx.lineTo(fb.x + fb.w, fb.y + 0.5); ctx.stroke(); ctx.restore();
+  foot.querySelectorAll('span').forEach(s => txt(s, s.textContent));
+}
+let lastCanvas = null;
+async function exportPNG() {
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  const b = contentBox();
+  if (!b) { toast('Bảng đang trống, chưa có gì để xuất'); return; }
+  try { await document.fonts.ready; } catch (e) {}
+  const pad = 40, x0 = b[0] - pad, y0 = b[1] - pad, w = b[2] - b[0] + 2 * pad, h = b[3] - b[1] + 2 * pad;
+  const scale = Math.min(2, 8000 / w, 8000 / h, Math.sqrt(30e6 / (w * h)));
+  const cv = document.createElement('canvas');
+  cv.width = Math.ceil(w * scale); cv.height = Math.ceil(h * scale);
+  const ctx = cv.getContext('2d');
+  ctx.scale(scale, scale); ctx.translate(-x0, -y0);
+  ctx.fillStyle = getComputedStyle(document.body).backgroundColor; ctx.fillRect(x0, y0, w, h);
+  for (const it of S.items) if (it.type === 'ta') drawTA(ctx, it);
+  for (const it of S.items) {
+    if (it.type === 'ta') continue;
+    ctx.save();
+    if (it.type === 'text') {
+      ctx.fillStyle = cval(it.color); ctx.font = `${it.size}px ${HAND}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      it.text.split('\n').forEach((l, i) => ctx.fillText(l, it.x, it.y + it.size * 0.9 + i * it.size * 1.25));
+    } else {
+      ctx.strokeStyle = cval(it.color); ctx.lineWidth = it.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (it.hl) ctx.globalAlpha = 0.38;
+      ctx.stroke(new Path2D(it.type === 'stroke' ? pathD(it.pts) : shapeD(it)));
+    }
+    ctx.restore();
+  }
+  lastCanvas = cv;
+  $('#modal-img').src = cv.toDataURL('image/png');
+  $('#modal').hidden = false;
+}
+$('#btn-export').addEventListener('click', exportPNG);
+$('#btn-close-modal').addEventListener('click', () => { $('#modal').hidden = true; });
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
+$('#btn-dl-img').addEventListener('click', () => {
+  const a = document.createElement('a'); a.href = $('#modal-img').src; a.download = 'bang-t-account.png';
+  document.body.appendChild(a); a.click(); a.remove();
+});
+$('#btn-copy-img').addEventListener('click', () => {
+  if (!lastCanvas) return;
+  lastCanvas.toBlob(blob => {
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        .then(() => toast('Đã sao chép ảnh — dán vào Word, Zalo hoặc Messenger'))
+        .catch(() => toast('Trình duyệt chặn sao chép. Nhấn chuột phải vào ảnh để sao chép.'));
+    } catch (e) { toast('Trình duyệt chặn sao chép. Nhấn chuột phải vào ảnh để sao chép.'); }
+  }, 'image/png');
+});
+
+/* ---------- misc controls ---------- */
+let toastT = null;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
+$('#btn-undo').addEventListener('click', undo);
+$('#btn-redo').addEventListener('click', redo);
+$('#btn-del').addEventListener('click', () => { if (sel) { removeItem(sel); commit(); } });
+$('#btn-zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z * 1.2));
+$('#btn-zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2));
+$('#zoomv').addEventListener('click', fitView);
+
+const KEYS = { v: 'select', h: 'hand', k: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text' };
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeMenus(); $('#modal').hidden = true; }
+  const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable]');
+  if (typing) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z * 1.2); return; }
+  if (mod && e.key === '-') { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2); return; }
+  if (mod) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); removeItem(sel); commit(); return; }
+  if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; document.body.classList.add('space'); } return; }
+  const t = KEYS[e.key.toLowerCase()];
+  if (t) setTool(t);
+});
+window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; document.body.classList.remove('space'); } });
+window.addEventListener('blur', () => { spaceDown = false; document.body.classList.remove('space'); });
+
+/* ---------- boot ---------- */
+let loaded = null;
+try { loaded = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+if (loaded && Array.isArray(loaded.items)) {
+  S = { items: loaded.items, view: loaded.view || { x: 0, y: 0, z: 1 }, grid: loaded.grid || 'dots' };
+  board.dataset.grid = S.grid;
+  applyView(); renderAll();
+  hist = [snap()]; hi = 0;
+} else {
+  applyView();
+  hist = [snap()]; hi = 0;
+  insertPreset(PRESETS[0], [0, 0]);
+  S.items.push({ id: uid(), type: 'text', x: -645, y: 160, text: 'Ví dụ — sửa số liệu, hoặc chọn "Mẫu giao dịch" để chèn nghiệp vụ khác', color: 'purple', size: 22 });
+  hist = [snap()]; hi = 0;
+  renderAll(); fitView();
+}
+setTool('select');
+updUndo();
+document.fonts && document.fonts.ready.then(() => { renderSvg(); });
+})();
+</script>
+</body>
+</html>
