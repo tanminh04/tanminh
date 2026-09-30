@@ -274,7 +274,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 </div>
 
 <div class="ui bar col" id="tools" role="toolbar" aria-label="Công cụ vẽ">
-  <button class="tb" data-tool="select" title="Chọn / sửa tài khoản (V)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.5 1.2L9.5 18z"/></svg><span>Chọn</span></button>
+  <button class="tb" data-tool="select" title="Chọn, di chuyển, đổi cỡ (V, hoặc nhấn ⌘ Command / Ctrl)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.5 1.2L9.5 18z"/></svg><span>Chọn</span></button>
   <button class="tb" data-tool="hand" title="Kéo bảng (H) — hoặc giữ Space"><svg viewBox="0 0 24 24"><path d="M8 12.5V5.5a1.5 1.5 0 013 0V11m0-7a1.5 1.5 0 013 0v7m0-5.5a1.5 1.5 0 013 0V13a7 7 0 01-7 7h-.6a6 6 0 01-5.2-3L3.4 13.9a1.5 1.5 0 012.5-1.6L8 14.5"/></svg><span>Kéo</span></button>
   <span class="sep"></span>
   <button class="tb" data-tool="tshape" title="Vẽ chữ T: kéo để chọn kích thước, hoặc bấm 1 lần (K)"><svg viewBox="0 0 24 24"><path d="M3 5h18M12 5v15"/></svg><span>Chữ T</span></button>
@@ -292,7 +292,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 
 <div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
 
-<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>V</kbd> chọn/kéo vùng · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>⌘</kbd>/<kbd>Ctrl</kbd> hoặc <kbd>V</kbd> chọn · kéo góc để đổi cỡ · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
 <div class="ui" id="toast" role="status" hidden></div>
 
 <div id="modal" hidden>
@@ -546,12 +546,46 @@ function renderSel() {
   taLayer.querySelectorAll('.ta').forEach(n => n.classList.toggle('sel', sel.has(n.dataset.id)));
   $('#btn-del').hidden = $('#btn-dup').hidden = !sel.size;
   const p = 6 / S.view.z, z = S.view.z;
-  selg.innerHTML = [...sel].map(byId).filter(it => it && it.type !== 'ta').map(it => {
+  const items = [...sel].map(byId).filter(Boolean);
+  let h = items.filter(it => it.type !== 'ta').map(it => {
     const b = bbox(it);
     return `<rect x="${b[0] - p}" y="${b[1] - p}" width="${b[2] - b[0] + 2 * p}" height="${b[3] - b[1] + 2 * p}" fill="none" stroke="var(--accent)" stroke-width="${1.5 / z}" stroke-dasharray="${5 / z} ${4 / z}" rx="${4 / z}"/>`;
   }).join('');
+  const g = selBox();
+  if (g && tool === 'select') {
+    if (items.length > 1) h += `<rect x="${g[0]}" y="${g[1]}" width="${g[2] - g[0]}" height="${g[3] - g[1]}" fill="none" stroke="var(--accent)" stroke-width="${1 / z}"/>`;
+    const hs = 10 / z;
+    for (const [cx, cy] of corners(g)) h += `<rect x="${cx - hs / 2}" y="${cy - hs / 2}" width="${hs}" height="${hs}" rx="${2 / z}" fill="var(--ui)" stroke="var(--accent)" stroke-width="${1.5 / z}"/>`;
+  }
+  selg.innerHTML = h;
 }
 function select(id) { sel = new Set(id ? [id] : []); renderSel(); }
+// Khung bao cả vùng chọn (có lề) và 4 góc để kéo đổi kích thước
+function selBox() {
+  let b = null;
+  for (const id of sel) {
+    const it = byId(id); if (!it) continue;
+    const k = bbox(it);
+    b = b ? [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])] : k;
+  }
+  if (!b) return null;
+  const p = 6 / S.view.z;
+  return [b[0] - p, b[1] - p, b[2] + p, b[3] + p];
+}
+const corners = g => [[g[0], g[1]], [g[2], g[1]], [g[2], g[3]], [g[0], g[3]]];
+function handleAt(x, y, touch) {
+  if (tool !== 'select' || !sel.size) return -1;
+  const g = selBox(); if (!g) return -1;
+  const r = (touch ? 16 : 9) / S.view.z;
+  return corners(g).findIndex(([cx, cy]) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r);
+}
+function scaleItem(it, o, ax, ay, sx, sy) {
+  const X = v => r1(ax + (v - ax) * sx), Y = v => r1(ay + (v - ay) * sy);
+  if (o.type === 'stroke') it.pts = o.pts.map(([x, y]) => [X(x), Y(y)]);
+  else if (o.type === 'text') { it.x = X(o.x); it.y = Y(o.y); it.size = Math.max(8, r1(o.size * Math.sqrt(sx * sy))); }
+  else if (o.type === 'ta') { it.x = X(o.x); it.y = Y(o.y); it.w = Math.round(Math.max(340, o.w * sx)); }
+  else { it.x1 = X(o.x1); it.y1 = Y(o.y1); it.x2 = X(o.x2); it.y2 = Y(o.y2); }
+}
 function pruneSel() { for (const id of [...sel]) if (!byId(id)) sel.delete(id); }
 
 /* ---------- sao chép / nhân bản ---------- */
@@ -749,6 +783,17 @@ board.addEventListener('pointerdown', e => {
     if (ptrs.size > 2) return;
   }
   const [x, y] = toWorld(e.clientX, e.clientY);
+  const hIdx = e.button === 0 || e.pointerType !== 'mouse' ? handleAt(x, y, e.pointerType === 'touch') : -1;
+  if (hIdx >= 0) {
+    e.preventDefault();
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    const g = selBox(), cs = corners(g), [ax, ay] = cs[(hIdx + 2) % 4], [cx, cy] = cs[hIdx];
+    const items = selectedItems();
+    op = { type: 'scale', items, orig: items.map(i => JSON.parse(JSON.stringify(i))), ax, ay, cx, cy,
+      uniform: items.every(i => i.type === 'text'), moved: false };
+    board.setPointerCapture(e.pointerId);
+    return;
+  }
   const taNode = e.target.closest('.ta');
   if (taNode) {
     let it = byId(taNode.dataset.id);
@@ -825,7 +870,26 @@ window.addEventListener('pointermove', e => {
     S.view = { x: c[0] - wx * nz, y: c[1] - wy * nz, z: nz };
     applyView(); return;
   }
-  if (!op) return;
+  if (!op) {
+    if (tool === 'select' && sel.size && e.target.closest && e.target.closest('#board')) {
+      const [hx, hy] = toWorld(e.clientX, e.clientY), k = handleAt(hx, hy, false);
+      board.style.cursor = k < 0 ? '' : (k % 2 === 0 ? 'nwse-resize' : 'nesw-resize');
+    } else if (board.style.cursor) board.style.cursor = '';
+    return;
+  }
+  if (op.type === 'scale') {
+    const [x, y] = toWorld(e.clientX, e.clientY);
+    const w0 = op.cx - op.ax, h0 = op.cy - op.ay;
+    let sx = Math.abs(w0) < 1 ? 1 : (x - op.ax) / w0, sy = Math.abs(h0) < 1 ? 1 : (y - op.ay) / h0;
+    sx = Math.max(0.05, sx); sy = Math.max(0.05, sy);
+    if (op.uniform || e.shiftKey) { const k = Math.max(sx, sy); sx = sy = k; }
+    op.moved = true;
+    op.items.forEach((it, i) => {
+      scaleItem(it, op.orig[i], op.ax, op.ay, sx, sy);
+      if (it.type === 'ta') { const el = taEl(it.id); el.style.left = it.x + 'px'; el.style.top = it.y + 'px'; el.style.width = it.w + 'px'; }
+    });
+    renderSvg(); return;
+  }
   if (op.type === 'pan') {
     S.view.x += e.clientX - op.lx; S.view.y += e.clientY - op.ly; op.lx = e.clientX; op.ly = e.clientY;
     applyView(); return;
@@ -887,6 +951,7 @@ function endPointer(e) {
     } else if (big) { S.items.push(o.it); commit(); }
     renderSvg();
   }
+  else if (o.type === 'scale') { if (o.moved) commit(); renderSel(); }
   else if (o.type === 'move' || o.type === 'resize') { if (o.moved || o.cloned) { commit(); renderSel(); } }
   else if (o.type === 'marquee') {
     const l = Math.min(o.x0, o.x1), r = Math.max(o.x0, o.x1), t = Math.min(o.y0, o.y1), b = Math.max(o.y0, o.y1);
@@ -917,6 +982,7 @@ board.addEventListener('dblclick', e => {
 });
 board.addEventListener('wheel', e => {
   e.preventDefault();
+  if (modTap) modTap.used = true;
   if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, S.view.z * Math.exp(-e.deltaY * 0.01));
   else { S.view.x -= e.deltaX; S.view.y -= e.deltaY; applyView(); saveSoon(); }
 }, { passive: false });
@@ -926,7 +992,7 @@ function setTool(t) {
   tool = t;
   document.body.dataset.tool = t;
   document.querySelectorAll('#tools .tb').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t));
-  if (t !== 'select') select(null);
+  if (t !== 'select') select(null); else renderSel();
   renderStyleBar();
 }
 function renderStyleBar() {
@@ -1178,6 +1244,11 @@ window.addEventListener('keydown', e => {
   if (!curId) return;
   const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable]');
   if (typing) return;
+  if (e.key === 'Meta' || e.key === 'Control') {
+    if (!e.repeat && !modTap) { modTap = { prev: tool, used: false }; if (tool !== 'select') setTool('select'); }
+    return;
+  }
+  if (modTap) modTap.used = true;
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
@@ -1194,8 +1265,17 @@ window.addEventListener('keydown', e => {
   const t = KEYS[e.key.toLowerCase()];
   if (t) setTool(t);
 });
-window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; document.body.classList.remove('space'); } });
-window.addEventListener('blur', () => { spaceDown = false; document.body.classList.remove('space'); });
+// Command/Ctrl: nhấn rồi thả riêng = chuyển hẳn sang Chọn; giữ trong lúc bấm/kéo hoặc dùng tổ hợp phím = chỉ tạm thời
+let modTap = null;
+board.addEventListener('pointerdown', () => { if (modTap) modTap.used = true; }, true);
+window.addEventListener('keyup', e => {
+  if (e.key === ' ') { spaceDown = false; document.body.classList.remove('space'); }
+  if ((e.key === 'Meta' || e.key === 'Control') && modTap) {
+    const m = modTap; modTap = null;
+    if (m.used && m.prev !== 'select' && tool === 'select' && !op) setTool(m.prev);
+  }
+});
+window.addEventListener('blur', () => { spaceDown = false; modTap = null; document.body.classList.remove('space'); });
 
 /* ---------- kho bảng ---------- */
 const fmtDate = t => new Date(t).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
