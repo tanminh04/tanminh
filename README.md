@@ -19,4 +19,4 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG.
 
 ## Phím tắt
-`V` hoặc nhấn-thả `⌘ Command`/`Ctrl` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `U` nối chữ U · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · `Space`+kéo · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
+`Space`, `V` hoặc nhấn-thả `⌘ Command`/`Ctrl` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `U` nối chữ U · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · giữ `Space`+kéo để di chuyển bảng · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
