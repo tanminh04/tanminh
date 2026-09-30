@@ -5,6 +5,7 @@ Bảng trắng trên trình duyệt để vẽ tài khoản chữ T (T-account) 
 Mở `index.html` bằng trình duyệt là dùng được, không cần cài đặt.
 
 ## Tính năng
+- Công cụ "Chữ T": bấm 1 lần ra khung chữ T sẵn, hoặc kéo để chọn kích thước.
 - Tài khoản chữ T nhập liệu trực tiếp: tên khu vực, tiêu đề hai bên, từng dòng có số bước `(1)`, dấu `+/−`, khoản mục, số tiền.
 - Tự tính Δ hai bên và báo **Cân đối / Lệch**.
 - Mẫu giao dịch có sẵn: OMO mua/bán, gửi tiền mặt, ngân hàng cho vay, NHNN mua ngoại tệ, Kho bạc phát hành trái phiếu.
@@ -13,4 +14,4 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG.
 
 ## Phím tắt
-`V` chọn/sửa · `H` kéo bảng · `K` tài khoản T · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · `Space`+kéo · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
+`V` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · `Space`+kéo · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.

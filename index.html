@@ -52,7 +52,7 @@ body[data-tool="hand"] #board, body.space #board { cursor: grab; }
 body.panning #board { cursor: grabbing; }
 body[data-tool="text"] #board { cursor: text; }
 body[data-tool="eraser"] #board { cursor: cell; }
-body[data-tool="ta"] #board { cursor: copy; }
+body[data-tool="ta"] #board, body[data-tool="tshape"] #board { cursor: copy; }
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 #ta-layer { position: absolute; left: 0; top: 0; }
 #ink { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
@@ -111,7 +111,7 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 #top-left { top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; padding: 4px 12px 4px 6px; gap: 8px; }
 #top-right { top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; }
 #tools { left: 12px; top: 50%; transform: translateY(-50%); }
-#stylebar { left: 64px; top: 50%; transform: translateY(-50%); gap: 6px; padding: 8px 6px; }
+#stylebar { left: 84px; top: 50%; transform: translateY(-50%); gap: 6px; padding: 8px 6px; }
 .brand-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--ui); display: grid; place-items: center; }
 .brand-mark svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .brand b { display: block; font-size: 14px; font-weight: 700; line-height: 1.1; }
@@ -128,6 +128,11 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 .txtbtn.danger { color: var(--minus); }
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 3px; flex: none; }
 .col > .sep { width: 22px; height: 1px; margin: 3px 0; }
+#tools { max-height: calc(100% - 150px); overflow-y: auto; }
+#tools .tb { width: 60px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+#tools .tb svg { flex: none; width: 20px; height: 20px; }
+#tools .tb span { font-size: 10px; font-weight: 500; line-height: 1.1; white-space: nowrap; color: var(--muted); }
+#tools .tb[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
 #zoomv { width: 54px; font: 500 12px var(--mono); }
 .sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ui); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
 .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
@@ -165,9 +170,9 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 @media (max-width: 720px) {
   .hide-sm { display: none !important; }
   #top-left { padding: 4px; }
-  #tools { left: 50%; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; max-width: calc(100vw - 24px); overflow-x: auto; box-sizing: border-box; }
+  #tools { max-height: none; left: 50%; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; max-width: calc(100vw - 24px); overflow-x: auto; box-sizing: border-box; }
   #tools > .sep { width: 1px; height: 22px; margin: 0 3px; }
-  #stylebar { left: 50%; top: auto; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; padding: 6px 8px; max-width: calc(100vw - 24px); box-sizing: border-box; overflow-x: auto; }
+  #stylebar { left: 50%; top: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; padding: 6px 8px; max-width: calc(100vw - 24px); box-sizing: border-box; overflow-x: auto; }
   #stylebar > .sep { width: 1px; height: 22px; margin: 0 3px; }
   #toast { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -222,24 +227,25 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 </div>
 
 <div class="ui bar col" id="tools" role="toolbar" aria-label="Công cụ vẽ">
-  <button class="tb" data-tool="select" title="Chọn / sửa tài khoản (V)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.5 1.2L9.5 18z"/></svg></button>
-  <button class="tb" data-tool="hand" title="Kéo bảng (H) — hoặc giữ Space"><svg viewBox="0 0 24 24"><path d="M8 12.5V5.5a1.5 1.5 0 013 0V11m0-7a1.5 1.5 0 013 0v7m0-5.5a1.5 1.5 0 013 0V13a7 7 0 01-7 7h-.6a6 6 0 01-5.2-3L3.4 13.9a1.5 1.5 0 012.5-1.6L8 14.5"/></svg></button>
+  <button class="tb" data-tool="select" title="Chọn / sửa tài khoản (V)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.5 1.2L9.5 18z"/></svg><span>Chọn</span></button>
+  <button class="tb" data-tool="hand" title="Kéo bảng (H) — hoặc giữ Space"><svg viewBox="0 0 24 24"><path d="M8 12.5V5.5a1.5 1.5 0 013 0V11m0-7a1.5 1.5 0 013 0v7m0-5.5a1.5 1.5 0 013 0V13a7 7 0 01-7 7h-.6a6 6 0 01-5.2-3L3.4 13.9a1.5 1.5 0 012.5-1.6L8 14.5"/></svg><span>Kéo</span></button>
   <span class="sep"></span>
-  <button class="tb" data-tool="ta" title="Thêm tài khoản chữ T (K)"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg></button>
-  <button class="tb" data-tool="pen" title="Bút (P)"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 7l3 3"/></svg></button>
-  <button class="tb" data-tool="hl" title="Bút đánh dấu (M)"><svg viewBox="0 0 24 24"><path d="M9 14l-4 4h5l1.5-1.5M9 14l8-8 3 3-8 8zM4 21h16"/></svg></button>
-  <button class="tb" data-tool="eraser" title="Tẩy (E)"><svg viewBox="0 0 24 24"><path d="M9 20h11M5.5 14.5l8-8a2 2 0 012.8 0l2.2 2.2a2 2 0 010 2.8L12 18H9z"/></svg></button>
+  <button class="tb" data-tool="tshape" title="Vẽ chữ T: kéo để chọn kích thước, hoặc bấm 1 lần (K)"><svg viewBox="0 0 24 24"><path d="M3 5h18M12 5v15"/></svg><span>Chữ T</span></button>
+  <button class="tb" data-tool="ta" title="T-account có ô nhập số, tự kiểm tra cân đối (N)"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg><span>T nhập số</span></button>
+  <button class="tb" data-tool="pen" title="Bút (P)"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 7l3 3"/></svg><span>Bút</span></button>
+  <button class="tb" data-tool="hl" title="Bút đánh dấu (M)"><svg viewBox="0 0 24 24"><path d="M9 14l-4 4h5l1.5-1.5M9 14l8-8 3 3-8 8zM4 21h16"/></svg><span>Đánh dấu</span></button>
+  <button class="tb" data-tool="eraser" title="Tẩy (E)"><svg viewBox="0 0 24 24"><path d="M9 20h11M5.5 14.5l8-8a2 2 0 012.8 0l2.2 2.2a2 2 0 010 2.8L12 18H9z"/></svg><span>Tẩy</span></button>
   <span class="sep"></span>
-  <button class="tb" data-tool="arrow" title="Mũi tên (A)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg></button>
-  <button class="tb" data-tool="line" title="Đường thẳng (L)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button>
-  <button class="tb" data-tool="rect" title="Hình chữ nhật (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
-  <button class="tb" data-tool="ellipse" title="Hình elip (O)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg></button>
-  <button class="tb" data-tool="text" title="Chữ viết (T)"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg></button>
+  <button class="tb" data-tool="arrow" title="Mũi tên (A)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg><span>Mũi tên</span></button>
+  <button class="tb" data-tool="line" title="Đường thẳng (L)"><svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg><span>Đường</span></button>
+  <button class="tb" data-tool="rect" title="Hình chữ nhật (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg><span>Hộp</span></button>
+  <button class="tb" data-tool="ellipse" title="Hình elip (O)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg><span>Elip</span></button>
+  <button class="tb" data-tool="text" title="Chữ viết (T)"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg><span>Chữ</span></button>
 </div>
 
 <div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
 
-<div class="ui hide-sm" id="hint">Tài khoản chữ T: dùng <kbd>V</kbd> để nhập số · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>V</kbd> chọn/di chuyển · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
 <div class="ui" id="toast" role="status" hidden></div>
 
 <div id="modal" hidden>
@@ -282,7 +288,7 @@ const ST = { pen: { c: 'ink', w: 3 }, hl: { c: 'yellow', w: 18 }, shape: { c: 'b
 const WOPTS = { pen: [2, 3, 5, 8], hl: [10, 18, 28], shape: [1.5, 2.5, 4], text: [18, 24, 32, 44] };
 const COLORS = ['ink', 'red', 'blue', 'green', 'orange', 'purple', 'yellow'];
 const COLOR_NAMES = { ink: 'Mực', red: 'Đỏ', blue: 'Xanh dương', green: 'Xanh lá', orange: 'Cam', purple: 'Tím', yellow: 'Vàng' };
-const SHAPES = ['line', 'arrow', 'rect', 'ellipse'];
+const SHAPES = ['line', 'arrow', 'rect', 'ellipse', 'tshape'];
 
 const uid = () => 'i' + Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -387,6 +393,7 @@ function pathD(p) {
 function shapeD(it) {
   const { x1, y1, x2, y2 } = it;
   if (it.type === 'line') return `M${x1} ${y1}L${x2} ${y2}`;
+  if (it.type === 'tshape') { const l = Math.min(x1, x2), r = Math.max(x1, x2), m = r1((l + r) / 2); return `M${l} ${y1}L${r} ${y1}M${m} ${y1}L${m} ${y2}`; }
   if (it.type === 'arrow') {
     const a = Math.atan2(y2 - y1, x2 - x1), L = Math.max(12, it.w * 4.5);
     const h1 = [r1(x2 - L * Math.cos(a - 0.45)), r1(y2 - L * Math.sin(a - 0.45))];
@@ -434,6 +441,7 @@ function hit(it, x, y, tol) {
   }
   const { x1, y1, x2, y2 } = it;
   if (it.type === 'line' || it.type === 'arrow') return segDist(x, y, x1, y1, x2, y2) <= t;
+  if (it.type === 'tshape') { const m = (x1 + x2) / 2; return segDist(x, y, x1, y1, x2, y1) <= t || segDist(x, y, m, y1, m, y2) <= t; }
   const l = Math.min(x1, x2), r = Math.max(x1, x2), tp = Math.min(y1, y2), bt = Math.max(y1, y2);
   if (it.type === 'rect') {
     return segDist(x, y, l, tp, r, tp) <= t || segDist(x, y, r, tp, r, bt) <= t || segDist(x, y, r, bt, l, bt) <= t || segDist(x, y, l, bt, l, tp) <= t;
@@ -657,7 +665,7 @@ board.addEventListener('pointerdown', e => {
       op = { type: 'draw', it }; liveEl(it); live.setAttribute('d', pathD(it.pts));
       break;
     }
-    case 'line': case 'arrow': case 'rect': case 'ellipse': {
+    case 'line': case 'arrow': case 'rect': case 'ellipse': case 'tshape': {
       const it = { id: uid(), type: tool, x1: r1(x), y1: r1(y), x2: r1(x), y2: r1(y), color: st.c, w: st.w };
       op = { type: 'shape', it }; liveEl(it);
       break;
@@ -706,7 +714,8 @@ window.addEventListener('pointermove', e => {
     let nx = x, ny = y;
     if (e.shiftKey) {
       const dx = x - it.x1, dy = y - it.y1;
-      if (it.type === 'line' || it.type === 'arrow') {
+      if (it.type === 'tshape') { nx = x; ny = y; }
+      else if (it.type === 'line' || it.type === 'arrow') {
         const a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(dx, dy);
         nx = it.x1 + len * Math.cos(a); ny = it.y1 + len * Math.sin(a);
       } else { const s = Math.max(Math.abs(dx), Math.abs(dy)); nx = it.x1 + Math.sign(dx || 1) * s; ny = it.y1 + Math.sign(dy || 1) * s; }
@@ -734,7 +743,13 @@ function endPointer(e) {
   else if (o.type === 'draw') { live.remove(); live = null; S.items.push(o.it); commit(); renderSvg(); }
   else if (o.type === 'shape') {
     live.remove(); live = null;
-    if (Math.hypot(o.it.x2 - o.it.x1, o.it.y2 - o.it.y1) * S.view.z > 3) { S.items.push(o.it); commit(); }
+    const big = Math.hypot(o.it.x2 - o.it.x1, o.it.y2 - o.it.y1) * S.view.z > 3;
+    if (o.it.type === 'tshape') {
+      // Bấm một lần: chữ T cỡ mặc định; kéo: tối thiểu đủ rộng/cao để không bị dẹt
+      if (!big) { o.it.x1 = r1(o.it.x1 - 240); o.it.x2 = r1(o.it.x1 + 480); o.it.y2 = r1(o.it.y1 + 300); }
+      if (o.it.y2 < o.it.y1 + 20) o.it.y2 = r1(o.it.y1 + Math.max(60, Math.abs(o.it.x2 - o.it.x1) * 0.6));
+      S.items.push(o.it); commit();
+    } else if (big) { S.items.push(o.it); commit(); }
     renderSvg();
   }
   else if (o.type === 'move' || o.type === 'resize') { if (o.moved) { commit(); renderSel(); } }
@@ -1009,7 +1024,7 @@ $('#btn-zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight
 $('#btn-zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2));
 $('#zoomv').addEventListener('click', fitView);
 
-const KEYS = { v: 'select', h: 'hand', k: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text' };
+const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text' };
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeMenus(); $('#modal').hidden = true; }
   const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable]');
