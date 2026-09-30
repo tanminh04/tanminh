@@ -12,7 +12,7 @@
 :root {
   --board: #fafbf8; --grid: #cdd5cf; --ui: #ffffff; --ui-2: #eef2ee; --line: #d8dfd9;
   --fg: #1c2520; --muted: #5d6a62; --accent: #1f6b4a; --accent-soft: #dbece2; --scrim: rgba(18, 28, 22, .45);
-  --pen-ink: #1c2520; --pen-red: #c0392b; --pen-blue: #2354a8; --pen-green: #1f7a4c; --pen-orange: #c7741a; --pen-purple: #7a3fa0; --pen-yellow: #f2d20a;
+  --home-bg: #eceeea; --pen-ink: #1c2520; --pen-red: #c0392b; --pen-blue: #2354a8; --pen-green: #1f7a4c; --pen-orange: #c7741a; --pen-purple: #7a3fa0; --pen-yellow: #f2d20a;
   --plus: #1f7a4c; --minus: #c0392b; --ok-bg: #dbece2; --bad-bg: #f8dfdb;
   --shadow: 0 6px 24px rgba(22, 40, 30, .12), 0 1px 3px rgba(22, 40, 30, .08);
   --ui-font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -23,7 +23,7 @@
   :root:not([data-theme="light"]) {
     --board: #161b18; --grid: #2e3832; --ui: #202724; --ui-2: #2a332e; --line: #35403a;
     --fg: #e4ebe6; --muted: #98a69e; --accent: #6cc49a; --accent-soft: #23392d; --scrim: rgba(0, 0, 0, .6);
-    --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
+    --home-bg: #111512; --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
     --plus: #6cc49a; --minus: #ff7a69; --ok-bg: #23392d; --bad-bg: #432723;
     --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
     color-scheme: dark;
@@ -32,7 +32,7 @@
 :root[data-theme="dark"] {
   --board: #161b18; --grid: #2e3832; --ui: #202724; --ui-2: #2a332e; --line: #35403a;
   --fg: #e4ebe6; --muted: #98a69e; --accent: #6cc49a; --accent-soft: #23392d; --scrim: rgba(0, 0, 0, .6);
-  --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
+  --home-bg: #111512; --pen-ink: #e4ebe6; --pen-red: #ff7a69; --pen-blue: #80a8ff; --pen-green: #6cc49a; --pen-orange: #f0a656; --pen-purple: #c79bf2; --pen-yellow: #c9ae00;
   --plus: #6cc49a; --minus: #ff7a69; --ok-bg: #23392d; --bad-bg: #432723;
   --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
   color-scheme: dark;
@@ -104,11 +104,44 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 
 .tx-edit { position: absolute; margin: 0; padding: 0; border: 1px dashed var(--accent); outline: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--hand); line-height: 1.25; white-space: pre; min-width: 40px; }
 
+/* ---------- home (kho bảng) ---------- */
+body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
+#home { position: fixed; inset: 0; overflow-y: auto; background: var(--home-bg); z-index: 5; }
+.home-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: var(--ui); border-bottom: 1px solid var(--line); }
+.home-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.home-body { max-width: 1240px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 18px; }
+.home-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.home-bar h1 { margin: 0; font-size: 20px; font-weight: 700; text-wrap: balance; }
+#home-search { font: inherit; color: var(--fg); background: var(--ui); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; width: min(280px, 100%); box-sizing: border-box; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+.card { position: relative; background: var(--ui); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 1px 3px rgba(22, 40, 30, .08); display: flex; flex-direction: column; min-width: 0; }
+.card:hover { box-shadow: var(--shadow); }
+.card-open { display: block; border: 0; padding: 0; background: none; cursor: pointer; text-align: left; border-radius: 10px 10px 0 0; overflow: hidden; }
+.thumb { aspect-ratio: 16 / 10; max-width: 100%; background: var(--board); border-bottom: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.thumb { position: relative; overflow: hidden; }
+.thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.card-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 12px 10px 12px 16px; }
+.card-title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.card-title-input { font: 700 15px var(--ui-font); color: var(--fg); background: var(--accent-soft); border: 0; outline: 2px solid var(--accent); border-radius: 5px; padding: 1px 4px; width: 100%; box-sizing: border-box; }
+.card-date { grid-column: 1; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.card-more { grid-column: 2; grid-row: 1 / span 2; }
+.card .menu { top: calc(100% + 4px); right: 0; width: 200px; }
+.card-new { border: 2px dashed var(--line); background: transparent; box-shadow: none; border-radius: 10px; cursor: pointer; display: grid; place-items: center; align-content: center; gap: 8px; min-height: 200px; color: var(--muted); font-weight: 600; }
+.card-new:hover { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.card-new svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.home-empty { grid-column: 1 / -1; color: var(--muted); padding: 24px 0; }
+.home-note { margin: 0; font-size: 12px; color: var(--muted); max-width: 65ch; }
+.title-wrap { display: flex; flex-direction: column; min-width: 0; }
+#board-title { font: 700 14px var(--ui-font); color: var(--fg); background: transparent; border: 0; outline: 0; padding: 1px 4px; border-radius: 5px; width: 190px; max-width: 42vw; text-overflow: ellipsis; }
+#board-title:hover { background: var(--ui-2); }
+#board-title:focus { background: var(--accent-soft); }
+#status { font-size: 11px; color: var(--muted); padding-left: 4px; }
+
 /* ---------- floating UI ---------- */
 .ui { position: fixed; z-index: 10; }
 .bar { background: var(--ui); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 2px; padding: 4px; }
 .col { flex-direction: column; }
-#top-left { top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; padding: 4px 12px 4px 6px; gap: 8px; }
+#top-left { top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; padding: 4px 10px 4px 4px; gap: 4px; }
 #top-right { top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; }
 #tools { left: 12px; top: 50%; transform: translateY(-50%); }
 #stylebar { left: 84px; top: 50%; transform: translateY(-50%); gap: 6px; padding: 8px 6px; }
@@ -170,6 +203,7 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 @media (max-width: 720px) {
   .hide-sm { display: none !important; }
   #top-left { padding: 4px; }
+  #board-title { width: 96px; }
   #tools { max-height: none; left: 50%; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; max-width: calc(100vw - 24px); overflow-x: auto; box-sizing: border-box; }
   #tools > .sep { width: 1px; height: 22px; margin: 0 3px; }
   #stylebar { left: 50%; top: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); flex-direction: row; padding: 6px 8px; max-width: calc(100vw - 24px); box-sizing: border-box; overflow-x: auto; }
@@ -191,9 +225,21 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 </div>
 
 <div class="ui bar brand" id="top-left">
-  <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 6h16M12 6v13"/></svg></div>
-  <div class="hide-sm"><b>Bảng T-Account</b><span id="status">Tự động lưu trên trình duyệt</span></div>
+  <button class="tb" id="btn-home" title="Về kho bảng"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <div class="title-wrap"><input id="board-title" value="" placeholder="Không có tiêu đề" aria-label="Tên bảng"><span id="status" class="hide-sm">Tự động lưu trên trình duyệt</span></div>
 </div>
+
+<main id="home" hidden>
+  <header class="home-head">
+    <div class="home-brand"><div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 6h16M12 6v13"/></svg></div><b>Bảng T-Account</b></div>
+    <button class="txtbtn primary" id="btn-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Bảng mới</span></button>
+  </header>
+  <div class="home-body">
+    <div class="home-bar"><h1>Bảng của bạn</h1><input id="home-search" type="search" placeholder="Tìm theo tên bảng" aria-label="Tìm bảng"></div>
+    <div class="cards" id="cards"></div>
+    <p class="home-note">Các bảng được lưu trong trình duyệt trên máy này. Nếu xoá dữ liệu trình duyệt hoặc đổi sang máy khác thì bảng sẽ không còn.</p>
+  </div>
+</main>
 
 <div class="ui bar" id="top-right">
   <button class="tb" id="btn-del" title="Xoá đối tượng đang chọn (Delete)" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
@@ -278,7 +324,6 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 const $ = s => document.querySelector(s);
 const NS = 'http://www.w3.org/2000/svg';
 const HAND = '"Patrick Hand", "Comic Sans MS", cursive';
-const KEY = 'tboard.v1';
 const board = $('#board'), world = $('#world'), layer = $('#layer'), selg = $('#selg'), taLayer = $('#ta-layer');
 const mctx = document.createElement('canvas').getContext('2d');
 
@@ -318,13 +363,36 @@ function fmt(v) {
 const total = rows => rows.reduce((a, r) => { const v = num(r.am); return v === null ? a : a + (r.s === '-' ? -v : v); }, 0);
 
 /* ---------- storage & history ---------- */
-let saveT = null;
+// Kho bảng: danh sách ở IDX_KEY, nội dung mỗi bảng ở BKEY+id, ảnh xem trước ở TKEY+id
+const IDX_KEY = 'tboard.index', BKEY = 'tboard.b.', TKEY = 'tboard.t.';
+let curId = null, saveT = null, thumbT = null, dirtyThumb = false;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
+function loadIndex() { try { const a = JSON.parse(lsGet(IDX_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function saveIndex(a) { lsSet(IDX_KEY, JSON.stringify(a)); }
+function touchIndex(patch) {
+  const a = loadIndex(), m = a.find(b => b.id === curId);
+  if (m) { Object.assign(m, patch); saveIndex(a); }
+}
+function saveNow() {
+  clearTimeout(saveT); saveT = null;
+  if (!curId) return;
+  if (lsSet(BKEY + curId, JSON.stringify(S))) { $('#status').textContent = 'Đã lưu trên trình duyệt này'; touchIndex({ updated: Date.now() }); }
+  else $('#status').textContent = 'Bộ nhớ trình duyệt đầy, chưa lưu được';
+}
 function saveSoon() {
   clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(S)); $('#status').textContent = 'Đã lưu trên trình duyệt này'; }
-    catch (e) { $('#status').textContent = 'Không lưu được — hãy xuất tệp .json'; }
-  }, 350);
+  saveT = setTimeout(saveNow, 350);
+  dirtyThumb = true; clearTimeout(thumbT); thumbT = setTimeout(saveThumb, 2500);
+}
+function saveThumb() {
+  clearTimeout(thumbT);
+  if (!curId || !dirtyThumb) return;
+  dirtyThumb = false;
+  const cv = renderCanvas(640, 400);
+  if (!cv) { lsDel(TKEY + curId); return; }
+  lsSet(TKEY + curId, cv.toDataURL('image/jpeg', 0.72));
 }
 let hist = [], hi = -1;
 const snap = () => JSON.stringify(S.items);
@@ -600,7 +668,8 @@ function editText(it, isNew) {
     renderSvg();
   }, { once: true });
   world.appendChild(ta);
-  setTimeout(() => ta.focus(), 0);
+  ta.focus();
+  setTimeout(() => { if (document.activeElement !== ta && ta.isConnected) ta.focus(); }, 0);
 }
 
 /* ---------- pointer handling ---------- */
@@ -966,13 +1035,11 @@ function drawTA(ctx, it) {
   foot.querySelectorAll('span').forEach(s => txt(s, s.textContent));
 }
 let lastCanvas = null;
-async function exportPNG() {
-  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+function renderCanvas(maxW, maxH) {
   const b = contentBox();
-  if (!b) { toast('Bảng đang trống, chưa có gì để xuất'); return; }
-  try { await document.fonts.ready; } catch (e) {}
+  if (!b) return null;
   const pad = 40, x0 = b[0] - pad, y0 = b[1] - pad, w = b[2] - b[0] + 2 * pad, h = b[3] - b[1] + 2 * pad;
-  const scale = Math.min(2, 8000 / w, 8000 / h, Math.sqrt(30e6 / (w * h)));
+  const scale = maxW ? Math.min(maxW / w, maxH / h, 2) : Math.min(2, 8000 / w, 8000 / h, Math.sqrt(30e6 / (w * h)));
   const cv = document.createElement('canvas');
   cv.width = Math.ceil(w * scale); cv.height = Math.ceil(h * scale);
   const ctx = cv.getContext('2d');
@@ -992,6 +1059,13 @@ async function exportPNG() {
     }
     ctx.restore();
   }
+  return cv;
+}
+async function exportPNG() {
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  try { await document.fonts.ready; } catch (e) {}
+  const cv = renderCanvas();
+  if (!cv) { toast('Bảng đang trống, chưa có gì để xuất'); return; }
   lastCanvas = cv;
   $('#modal-img').src = cv.toDataURL('image/png');
   $('#modal').hidden = false;
@@ -1027,6 +1101,7 @@ $('#zoomv').addEventListener('click', fitView);
 const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text' };
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeMenus(); $('#modal').hidden = true; }
+  if (!curId) return;
   const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable]');
   if (typing) return;
   const mod = e.ctrlKey || e.metaKey;
@@ -1043,25 +1118,121 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; document.body.classList.remove('space'); } });
 window.addEventListener('blur', () => { spaceDown = false; document.body.classList.remove('space'); });
 
-/* ---------- boot ---------- */
-let loaded = null;
-try { loaded = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-if (loaded && Array.isArray(loaded.items)) {
-  S = { items: loaded.items, view: loaded.view || { x: 0, y: 0, z: 1 }, grid: loaded.grid || 'dots' };
-  board.dataset.grid = S.grid;
-  applyView(); renderAll();
-  hist = [snap()]; hi = 0;
-} else {
-  applyView();
-  hist = [snap()]; hi = 0;
-  insertPreset(PRESETS[0], [0, 0]);
-  S.items.push({ id: uid(), type: 'text', x: -645, y: 160, text: 'Ví dụ — sửa số liệu, hoặc chọn "Mẫu giao dịch" để chèn nghiệp vụ khác', color: 'purple', size: 22 });
-  hist = [snap()]; hi = 0;
-  renderAll(); fitView();
+/* ---------- kho bảng ---------- */
+const fmtDate = t => new Date(t).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function createBoard(title, data) {
+  const id = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), now = Date.now();
+  const a = loadIndex(); a.push({ id, title: title || '', created: now, updated: now }); saveIndex(a);
+  lsSet(BKEY + id, JSON.stringify(data || { items: [], view: null, grid: 'dots' }));
+  return id;
 }
-setTool('select');
-updUndo();
-document.fonts && document.fonts.ready.then(() => { renderSvg(); });
+function openBoard(id) {
+  const meta = loadIndex().find(b => b.id === id); if (!meta) return;
+  let d = null;
+  try { d = JSON.parse(lsGet(BKEY + id) || 'null'); } catch (e) {}
+  d = d && Array.isArray(d.items) ? d : { items: [], view: null, grid: 'dots' };
+  curId = id; sel = null; op = null; editingId = null;
+  S = { items: d.items, view: d.view || { x: 0, y: 0, z: 1 }, grid: d.grid || 'dots' };
+  document.body.classList.remove('at-home'); $('#home').hidden = true;
+  board.dataset.grid = S.grid;
+  $('#board-title').value = meta.title || '';
+  $('#status').textContent = 'Đã chỉnh sửa ' + fmtDate(meta.updated);
+  applyView(); renderAll();
+  if (!d.view) fitView();
+  hist = [snap()]; hi = 0; updUndo();
+  setTool(S.items.length ? 'select' : 'tshape');
+  dirtyThumb = !lsGet(TKEY + id) && S.items.length > 0;
+  if (dirtyThumb) thumbT = setTimeout(saveThumb, 800);
+}
+function goHome() {
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  if (curId) { saveNow(); saveThumb(); }
+  curId = null; closeMenus(); $('#modal').hidden = true;
+  document.body.classList.add('at-home'); $('#home').hidden = false;
+  renderHome();
+}
+const MORE_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>';
+function renderHome() {
+  const q = $('#home-search').value.trim().toLowerCase();
+  const list = loadIndex().sort((a, b) => b.updated - a.updated).filter(b => !q || (b.title || 'không có tiêu đề').toLowerCase().includes(q));
+  let h = q ? '' : '<button class="card card-new" id="card-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Tạo bảng mới</button>';
+  h += list.map(b => {
+    const t = lsGet(TKEY + b.id);
+    return `<div class="card" data-id="${b.id}">
+      <button class="card-open" aria-label="Mở ${esc(b.title || 'Không có tiêu đề')}"><div class="thumb">${t ? `<img src="${t}" alt="">` : 'Bảng trống'}</div></button>
+      <div class="card-meta">
+        <span class="card-title" title="${esc(b.title || 'Không có tiêu đề')}">${esc(b.title || 'Không có tiêu đề')}</span>
+        <div class="menu-wrap card-more"><button class="tb" data-act="menu" title="Tuỳ chọn" aria-haspopup="true" aria-expanded="false">${MORE_ICON}</button>
+          <div class="menu" hidden><button data-act="open">Mở</button><button data-act="rename">Đổi tên</button><button data-act="dup">Nhân bản</button><hr><button data-act="del" class="danger">Xoá bảng</button></div></div>
+        <span class="card-date">Đã chỉnh sửa: ${fmtDate(b.updated)}</span>
+      </div></div>`;
+  }).join('');
+  if (!list.length && q) h += '<p class="home-empty">Không có bảng nào khớp với tên này.</p>';
+  $('#cards').innerHTML = h;
+}
+function renameCard(card) {
+  const id = card.dataset.id, span = card.querySelector('.card-title');
+  const a = loadIndex(), m = a.find(b => b.id === id); if (!m) return;
+  const inp = document.createElement('input');
+  inp.className = 'card-title-input'; inp.value = m.title || ''; inp.placeholder = 'Không có tiêu đề';
+  span.replaceWith(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = ok => {
+    if (done) return; done = true;
+    if (ok) { const a2 = loadIndex(), m2 = a2.find(b => b.id === id); if (m2) { m2.title = inp.value.trim(); saveIndex(a2); } }
+    renderHome();
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); });
+  inp.addEventListener('blur', () => finish(true));
+}
+$('#cards').addEventListener('click', e => {
+  if (e.target.closest('#card-new')) { openBoard(createBoard('')); return; }
+  const card = e.target.closest('.card'); if (!card) return;
+  const id = card.dataset.id;
+  if (e.target.closest('.card-open')) { openBoard(id); return; }
+  if (e.target.closest('.card-title')) { renameCard(card); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'menu') { e.stopPropagation(); toggleMenu(b, card.querySelector('.menu')); return; }
+  if (act === 'open') openBoard(id);
+  else if (act === 'rename') { closeMenus(); renameCard(card); }
+  else if (act === 'dup') {
+    const m = loadIndex().find(x => x.id === id);
+    const nid = createBoard((m.title || 'Không có tiêu đề') + ' (bản sao)', JSON.parse(lsGet(BKEY + id) || '{"items":[]}'));
+    const t = lsGet(TKEY + id); if (t) lsSet(TKEY + nid, t);
+    renderHome(); toast('Đã nhân bản bảng');
+  } else if (act === 'del') {
+    if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Nhấn lần nữa để xoá'; return; }
+    saveIndex(loadIndex().filter(x => x.id !== id)); lsDel(BKEY + id); lsDel(TKEY + id);
+    renderHome(); toast('Đã xoá bảng');
+  }
+});
+$('#btn-new').addEventListener('click', () => openBoard(createBoard('')));
+$('#home-search').addEventListener('input', renderHome);
+$('#btn-home').addEventListener('click', goHome);
+$('#board-title').addEventListener('change', e => touchIndex({ title: e.target.value.trim() }));
+$('#board-title').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+window.addEventListener('pagehide', () => { if (curId) { saveNow(); saveThumb(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && curId) { saveNow(); saveThumb(); } });
+
+/* ---------- boot ---------- */
+if (!loadIndex().length) {
+  let legacy = null;
+  try { legacy = JSON.parse(lsGet('tboard.v1') || 'null'); } catch (e) {}
+  if (legacy && Array.isArray(legacy.items) && legacy.items.length) {
+    createBoard('Bảng đầu tiên', legacy);
+    lsDel('tboard.v1');
+  } else {
+    // Bảng ví dụ cho lần đầu mở
+    const id = createBoard('Ví dụ: NHNN mua TPCP qua OMO');
+    openBoard(id);
+    insertPreset(PRESETS[0], [0, 0]);
+    S.items.push({ id: uid(), type: 'text', x: -645, y: 160, text: 'Ví dụ — sửa số liệu, hoặc chọn "Mẫu giao dịch" để chèn nghiệp vụ khác', color: 'purple', size: 22 });
+    renderAll(); fitView(); saveNow(); dirtyThumb = true;
+    document.fonts && document.fonts.ready.then(() => { renderSvg(); saveThumb(); goHome(); });
+  }
+}
+if (!curId) goHome();
 })();
 </script>
 </body>
