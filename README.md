@@ -12,6 +12,7 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Vẽ tay, bút đánh dấu, tẩy, mũi tên, đường thẳng, hình chữ nhật, elip, chữ viết.
 - Kéo/phóng to bảng vô hạn, hỗ trợ cảm ứng (chụm 2 ngón).
 - Kho bảng: lưu nhiều bảng, mỗi bảng có ảnh xem trước, tên, ngày chỉnh sửa; đổi tên, nhân bản, xoá, tìm theo tên.
+- Chọn nhiều (kéo vùng hoặc Shift+bấm), nhân bản sang bên phải (nút Nhân bản / Ctrl+D), Alt+kéo để kéo ra bản sao, Ctrl+C / Ctrl+X / Ctrl+V, Ctrl+A.
 - Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG.
 
 ## Phím tắt

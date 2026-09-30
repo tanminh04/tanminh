@@ -242,6 +242,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 </main>
 
 <div class="ui bar" id="top-right">
+  <button class="tb" id="btn-dup" title="Nhân bản thành phần đang chọn (Ctrl+D)" hidden><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg></button>
   <button class="tb" id="btn-del" title="Xoá đối tượng đang chọn (Delete)" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
   <button class="tb" id="btn-undo" title="Hoàn tác (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/></svg></button>
   <button class="tb" id="btn-redo" title="Làm lại (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3"/></svg></button>
@@ -291,7 +292,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 
 <div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
 
-<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>V</kbd> chọn/di chuyển · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>V</kbd> chọn/kéo vùng · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · <kbd>Space</kbd>+kéo để di chuyển · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
 <div class="ui" id="toast" role="status" hidden></div>
 
 <div id="modal" hidden>
@@ -328,7 +329,7 @@ const board = $('#board'), world = $('#world'), layer = $('#layer'), selg = $('#
 const mctx = document.createElement('canvas').getContext('2d');
 
 let S = { items: [], view: { x: 0, y: 0, z: 1 }, grid: 'dots' };
-let tool = 'pen', sel = null, op = null, editingId = null, spaceDown = false;
+let tool = 'pen', sel = new Set(), op = null, editingId = null, spaceDown = false;
 const ST = { pen: { c: 'ink', w: 3 }, hl: { c: 'yellow', w: 18 }, shape: { c: 'blue', w: 2.5 }, text: { c: 'ink', w: 24 } };
 const WOPTS = { pen: [2, 3, 5, 8], hl: [10, 18, 28], shape: [1.5, 2.5, 4], text: [18, 24, 32, 44] };
 const COLORS = ['ink', 'red', 'blue', 'green', 'orange', 'purple', 'yellow'];
@@ -404,7 +405,7 @@ function commit() {
   hi = hist.length - 1;
   saveSoon(); updUndo();
 }
-function restore(s) { S.items = JSON.parse(s); if (sel && !byId(sel)) sel = null; renderAll(); saveSoon(); updUndo(); }
+function restore(s) { S.items = JSON.parse(s); pruneSel(); renderAll(); saveSoon(); updUndo(); }
 function undo() { if (hi > 0) { hi--; restore(hist[hi]); } }
 function redo() { if (hi < hist.length - 1) { hi++; restore(hist[hi]); } }
 function updUndo() { $('#btn-undo').disabled = hi <= 0; $('#btn-redo').disabled = hi >= hist.length - 1; }
@@ -542,14 +543,60 @@ function itemSvg(it) {
 function renderSvg() { layer.innerHTML = S.items.map(itemSvg).join(''); renderSel(); }
 function renderSel() {
   selg.innerHTML = '';
-  taLayer.querySelectorAll('.ta').forEach(n => n.classList.toggle('sel', n.dataset.id === sel));
-  $('#btn-del').hidden = !sel;
-  const it = sel && byId(sel);
-  if (!it || it.type === 'ta') return;
-  const b = bbox(it), p = 6 / S.view.z;
-  selg.innerHTML = `<rect x="${b[0] - p}" y="${b[1] - p}" width="${b[2] - b[0] + 2 * p}" height="${b[3] - b[1] + 2 * p}" fill="none" stroke="var(--accent)" stroke-width="${1.5 / S.view.z}" stroke-dasharray="${5 / S.view.z} ${4 / S.view.z}" rx="${4 / S.view.z}"/>`;
+  taLayer.querySelectorAll('.ta').forEach(n => n.classList.toggle('sel', sel.has(n.dataset.id)));
+  $('#btn-del').hidden = $('#btn-dup').hidden = !sel.size;
+  const p = 6 / S.view.z, z = S.view.z;
+  selg.innerHTML = [...sel].map(byId).filter(it => it && it.type !== 'ta').map(it => {
+    const b = bbox(it);
+    return `<rect x="${b[0] - p}" y="${b[1] - p}" width="${b[2] - b[0] + 2 * p}" height="${b[3] - b[1] + 2 * p}" fill="none" stroke="var(--accent)" stroke-width="${1.5 / z}" stroke-dasharray="${5 / z} ${4 / z}" rx="${4 / z}"/>`;
+  }).join('');
 }
-function select(id) { sel = id; renderSel(); }
+function select(id) { sel = new Set(id ? [id] : []); renderSel(); }
+function pruneSel() { for (const id of [...sel]) if (!byId(id)) sel.delete(id); }
+
+/* ---------- sao chép / nhân bản ---------- */
+let clip = null, pasteN = 0;
+function cloneItem(it, dx, dy) {
+  const c = JSON.parse(JSON.stringify(it));
+  c.id = uid(); moveItem(c, dx, dy);
+  return c;
+}
+function selectedItems() { return S.items.filter(i => sel.has(i.id)); }
+function copySel() {
+  const items = selectedItems(); if (!items.length) return false;
+  clip = JSON.stringify(items); pasteN = 0;
+  return true;
+}
+function pasteClip() {
+  if (!clip) { toast('Chưa sao chép gì. Chọn một thành phần rồi nhấn Ctrl+C'); return; }
+  pasteN++;
+  const d = 30 * pasteN, made = JSON.parse(clip).map(it => cloneItem(it, d, d));
+  S.items.push(...made); sel = new Set(made.map(i => i.id));
+  commit(); renderAll();
+}
+function duplicateSel() {
+  const items = selectedItems();
+  if (!items.length) { toast('Hãy chọn thành phần cần nhân bản trước (công cụ Chọn, phím V)'); return; }
+  // Đặt bản sao ngay bên phải cụm đang chọn
+  let l = Infinity, r = -Infinity;
+  for (const it of items) { const k = bbox(it); l = Math.min(l, k[0]); r = Math.max(r, k[2]); }
+  const made = items.map(it => cloneItem(it, r1(r - l + 40), 0));
+  S.items.push(...made); sel = new Set(made.map(i => i.id));
+  commit(); renderAll();
+}
+// Alt + kéo: tạo bản sao tại chỗ rồi kéo bản sao đi
+function altClone(hitIt) {
+  const made = selectedItems().map(it => cloneItem(it, 0, 0));
+  const idx = selectedItems().findIndex(i => i.id === hitIt.id);
+  S.items.push(...made); sel = new Set(made.map(i => i.id));
+  renderAll();
+  return made[idx] || made[0];
+}
+function deleteSel() {
+  if (!sel.size) return;
+  for (const id of [...sel]) removeItem(id);
+  commit();
+}
 
 /* ---------- rendering: T-accounts ---------- */
 const newRow = (s = '+', lb = '', am = '', st = '') => ({ s, lb, am, st });
@@ -565,7 +612,7 @@ function rowHtml(r, i) {
 }
 function buildTA(it) {
   const el = document.createElement('div');
-  el.className = 'ta' + (sel === it.id ? ' sel' : '');
+  el.className = 'ta' + (sel.has(it.id) ? ' sel' : '');
   el.dataset.id = it.id;
   el.style.cssText = `left:${it.x}px;top:${it.y}px;width:${it.w}px`;
   const col = side => `<div class="ta-col" data-side="${side}">${it[side].map(rowHtml).join('')}<button class="ta-add" data-side="${side}">+ Thêm dòng</button></div>`;
@@ -610,7 +657,7 @@ function newTA(x, y, o = {}) {
 function removeItem(id) {
   S.items = S.items.filter(i => i.id !== id);
   const el = taEl(id); if (el) el.remove();
-  if (sel === id) sel = null;
+  sel.delete(id);
   renderSvg();
 }
 
@@ -704,12 +751,15 @@ board.addEventListener('pointerdown', e => {
   const [x, y] = toWorld(e.clientX, e.clientY);
   const taNode = e.target.closest('.ta');
   if (taNode) {
-    const it = byId(taNode.dataset.id);
-    if (sel !== it.id) select(it.id);
+    let it = byId(taNode.dataset.id);
+    const dragZone = e.target.closest('.ta-grip') || e.target.classList.contains('ta-top') || e.target.classList.contains('ta-heads') || e.target.classList.contains('ta-body') || e.target.classList.contains('ta-col');
+    if (e.shiftKey && dragZone) { sel.has(it.id) ? sel.delete(it.id) : sel.add(it.id); renderSel(); return; }
+    if (!sel.has(it.id)) select(it.id);
+    if (dragZone && e.altKey) it = altClone(it);
     if (e.target.closest('.ta-grip') || e.target.classList.contains('ta-top') || e.target.classList.contains('ta-heads') || e.target.classList.contains('ta-body') || e.target.classList.contains('ta-col')) {
       e.preventDefault();
       if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-      op = { type: 'move', it, lx: x, ly: y, moved: false };
+      op = { type: 'move', items: selectedItems(), lx: x, ly: y, moved: false, cloned: e.altKey };
     } else if (e.target.closest('.ta-resize')) {
       e.preventDefault();
       op = { type: 'resize', it, sx: x, w0: it.w, moved: false };
@@ -725,8 +775,15 @@ board.addEventListener('pointerdown', e => {
   switch (tool) {
     case 'select': {
       const h = topHit(x, y, tol);
-      if (h) { select(h.id); op = { type: 'move', it: h, lx: x, ly: y, moved: false }; }
-      else { select(null); startPan(e); }
+      if (h) {
+        if (e.shiftKey) { sel.has(h.id) ? sel.delete(h.id) : sel.add(h.id); renderSel(); break; }
+        if (!sel.has(h.id)) select(h.id);
+        if (e.altKey) altClone(h);
+        op = { type: 'move', items: selectedItems(), lx: x, ly: y, moved: false, cloned: e.altKey };
+      } else {
+        if (!e.shiftKey) select(null);
+        op = { type: 'marquee', x0: x, y0: y, x1: x, y1: y, add: e.shiftKey };
+      }
       break;
     }
     case 'pen': case 'hl': {
@@ -755,7 +812,7 @@ function eraseAt(x, y) {
   const tol = 6 / S.view.z;
   const before = S.items.length;
   S.items = S.items.filter(it => !hit(it, x, y, tol));
-  if (S.items.length !== before) { op.removed = true; if (sel && !byId(sel)) sel = null; renderSvg(); }
+  if (S.items.length !== before) { op.removed = true; pruneSel(); renderSvg(); }
 }
 
 window.addEventListener('pointermove', e => {
@@ -793,9 +850,18 @@ window.addEventListener('pointermove', e => {
   } else if (op.type === 'move') {
     const dx = x - op.lx, dy = y - op.ly; if (!dx && !dy) return;
     op.lx = x; op.ly = y; op.moved = true;
-    moveItem(op.it, dx, dy);
-    if (op.it.type === 'ta') { const el = taEl(op.it.id); el.style.left = op.it.x + 'px'; el.style.top = op.it.y + 'px'; }
-    else renderSvg();
+    let vec = false;
+    for (const it of op.items) {
+      moveItem(it, dx, dy);
+      if (it.type === 'ta') { const el = taEl(it.id); el.style.left = it.x + 'px'; el.style.top = it.y + 'px'; }
+      else vec = true;
+    }
+    if (vec) renderSvg();
+  } else if (op.type === 'marquee') {
+    op.x1 = x; op.y1 = y;
+    const l = Math.min(op.x0, x), t = Math.min(op.y0, y), z = S.view.z;
+    renderSel();
+    selg.insertAdjacentHTML('beforeend', `<rect x="${l}" y="${t}" width="${Math.abs(x - op.x0)}" height="${Math.abs(y - op.y0)}" fill="var(--accent-soft)" fill-opacity=".45" stroke="var(--accent)" stroke-width="${1 / z}"/>`);
   } else if (op.type === 'resize') {
     op.it.w = Math.round(Math.max(340, op.w0 + x - op.sx)); op.moved = true;
     taEl(op.it.id).style.width = op.it.w + 'px';
@@ -821,7 +887,14 @@ function endPointer(e) {
     } else if (big) { S.items.push(o.it); commit(); }
     renderSvg();
   }
-  else if (o.type === 'move' || o.type === 'resize') { if (o.moved) { commit(); renderSel(); } }
+  else if (o.type === 'move' || o.type === 'resize') { if (o.moved || o.cloned) { commit(); renderSel(); } }
+  else if (o.type === 'marquee') {
+    const l = Math.min(o.x0, o.x1), r = Math.max(o.x0, o.x1), t = Math.min(o.y0, o.y1), b = Math.max(o.y0, o.y1);
+    if ((r - l) * S.view.z > 4 || (b - t) * S.view.z > 4) {
+      for (const it of S.items) { const k = bbox(it); if (k[0] < r && k[2] > l && k[1] < b && k[3] > t) sel.add(it.id); }
+    }
+    renderSel();
+  }
   else if (o.type === 'erase') { if (o.removed) commit(); }
   else if (o.type === 'text' && e.type === 'pointerup') {
     const h = topHit(o.x, o.y, 4 / S.view.z);
@@ -966,7 +1039,7 @@ function clearArm() { clearTimeout(armT); const b = $('#btn-clear'); b.dataset.a
 $('#btn-clear').addEventListener('click', e => {
   const b = e.currentTarget;
   if (!b.dataset.armed) { b.dataset.armed = '1'; b.innerHTML = 'Nhấn lần nữa để xoá<small>Tất cả tài khoản và nét vẽ sẽ bị xoá</small>'; armT = setTimeout(clearArm, 4000); return; }
-  S.items = []; sel = null; commit(); renderAll(); closeMenus(); toast('Đã xoá bảng. Nhấn Ctrl+Z để khôi phục');
+  S.items = []; sel = new Set(); commit(); renderAll(); closeMenus(); toast('Đã xoá bảng. Nhấn Ctrl+Z để khôi phục');
 });
 $('#btn-save-json').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify({ app: 'bang-t-account', version: 1, items: S.items }, null, 1)], { type: 'application/json' });
@@ -984,7 +1057,7 @@ $('#file').addEventListener('change', e => {
     try {
       const d = JSON.parse(rd.result), items = Array.isArray(d) ? d : d.items;
       if (!Array.isArray(items)) throw new Error();
-      S.items = items.filter(i => i && i.id && i.type); sel = null;
+      S.items = items.filter(i => i && i.id && i.type); sel = new Set();
       commit(); renderAll(); fitView(); toast('Đã mở bảng từ tệp');
     } catch (err) { toast('Tệp không đúng định dạng của Bảng T-Account'); }
   };
@@ -1093,7 +1166,8 @@ let toastT = null;
 function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
 $('#btn-undo').addEventListener('click', undo);
 $('#btn-redo').addEventListener('click', redo);
-$('#btn-del').addEventListener('click', () => { if (sel) { removeItem(sel); commit(); } });
+$('#btn-del').addEventListener('click', deleteSel);
+$('#btn-dup').addEventListener('click', duplicateSel);
 $('#btn-zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z * 1.2));
 $('#btn-zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2));
 $('#zoomv').addEventListener('click', fitView);
@@ -1109,8 +1183,13 @@ window.addEventListener('keydown', e => {
   if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
   if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z * 1.2); return; }
   if (mod && e.key === '-') { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2); return; }
+  if (mod && e.key.toLowerCase() === 'c') { if (copySel()) { e.preventDefault(); toast(`Đã sao chép ${sel.size} thành phần — Ctrl+V để dán`); } return; }
+  if (mod && e.key.toLowerCase() === 'x') { if (copySel()) { e.preventDefault(); deleteSel(); toast('Đã cắt — Ctrl+V để dán'); } return; }
+  if (mod && e.key.toLowerCase() === 'v') { if (clip) { e.preventDefault(); pasteClip(); } return; }
+  if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSel(); return; }
+  if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); setTool('select'); sel = new Set(S.items.map(i => i.id)); renderSel(); return; }
   if (mod) return;
-  if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); removeItem(sel); commit(); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel.size) { e.preventDefault(); deleteSel(); return; }
   if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; document.body.classList.add('space'); } return; }
   const t = KEYS[e.key.toLowerCase()];
   if (t) setTool(t);
@@ -1131,7 +1210,7 @@ function openBoard(id) {
   let d = null;
   try { d = JSON.parse(lsGet(BKEY + id) || 'null'); } catch (e) {}
   d = d && Array.isArray(d.items) ? d : { items: [], view: null, grid: 'dots' };
-  curId = id; sel = null; op = null; editingId = null;
+  curId = id; sel = new Set(); op = null; editingId = null;
   S = { items: d.items, view: d.view || { x: 0, y: 0, z: 1 }, grid: d.grid || 'dots' };
   document.body.classList.remove('at-home'); $('#home').hidden = true;
   board.dataset.grid = S.grid;
