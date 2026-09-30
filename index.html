@@ -173,6 +173,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 .wd:hover { background: var(--ui-2); }
 .wd[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
 .wd i { display: block; border-radius: 50%; background: currentColor; }
+.wd.ua svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .wd b { font-family: var(--hand); font-weight: 400; line-height: 1; }
 
 .menu-wrap { position: relative; }
@@ -278,6 +279,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
   <button class="tb" data-tool="hand" title="Kéo bảng (H) — hoặc giữ Space"><svg viewBox="0 0 24 24"><path d="M8 12.5V5.5a1.5 1.5 0 013 0V11m0-7a1.5 1.5 0 013 0v7m0-5.5a1.5 1.5 0 013 0V13a7 7 0 01-7 7h-.6a6 6 0 01-5.2-3L3.4 13.9a1.5 1.5 0 012.5-1.6L8 14.5"/></svg><span>Kéo</span></button>
   <span class="sep"></span>
   <button class="tb" data-tool="tshape" title="Vẽ chữ T: kéo để chọn kích thước, hoặc bấm 1 lần (K)"><svg viewBox="0 0 24 24"><path d="M3 5h18M12 5v15"/></svg><span>Chữ T</span></button>
+  <button class="tb" data-tool="ucon" title="Đường nối chữ U: kéo từ điểm đầu, xuống dưới, sang ngang rồi lên điểm cuối (U)"><svg viewBox="0 0 24 24"><path d="M6 6v8a4 4 0 004 4h4a4 4 0 004-4V6M3.5 8.5L6 6l2.5 2.5M15.5 8.5L18 6l2.5 2.5"/></svg><span>Nối U</span></button>
   <button class="tb" data-tool="ta" title="T-account có ô nhập số, tự kiểm tra cân đối (N)"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg><span>T nhập số</span></button>
   <button class="tb" data-tool="pen" title="Bút (P)"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16zM14 7l3 3"/></svg><span>Bút</span></button>
   <button class="tb" data-tool="hl" title="Bút đánh dấu (M)"><svg viewBox="0 0 24 24"><path d="M9 14l-4 4h5l1.5-1.5M9 14l8-8 3 3-8 8zM4 21h16"/></svg><span>Đánh dấu</span></button>
@@ -334,7 +336,8 @@ const ST = { pen: { c: 'ink', w: 3 }, hl: { c: 'yellow', w: 18 }, shape: { c: 'b
 const WOPTS = { pen: [2, 3, 5, 8], hl: [10, 18, 28], shape: [1.5, 2.5, 4], text: [18, 24, 32, 44] };
 const COLORS = ['ink', 'red', 'blue', 'green', 'orange', 'purple', 'yellow'];
 const COLOR_NAMES = { ink: 'Mực', red: 'Đỏ', blue: 'Xanh dương', green: 'Xanh lá', orange: 'Cam', purple: 'Tím', yellow: 'Vàng' };
-const SHAPES = ['line', 'arrow', 'rect', 'ellipse', 'tshape'];
+const SHAPES = ['line', 'arrow', 'rect', 'ellipse', 'tshape', 'ucon'];
+let uArrows = 2; // Nối U: 0 = không mũi tên, 1 = mũi tên ở điểm cuối, 2 = hai đầu
 
 const uid = () => 'i' + Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -462,6 +465,16 @@ function pathD(p) {
 function shapeD(it) {
   const { x1, y1, x2, y2 } = it;
   if (it.type === 'line') return `M${x1} ${y1}L${x2} ${y2}`;
+  if (it.type === 'ucon') {
+    // Đường chữ U: đi xuống từ điểm đầu, chạy ngang ở đáy yb, đi lên điểm cuối
+    const yb = it.yb, dir = x2 >= x1 ? 1 : -1, rr = Math.max(0, Math.min(18, (yb - Math.max(y1, y2)) / 2, Math.abs(x2 - x1) / 2));
+    let d = `M${x1} ${y1}L${x1} ${r1(yb - rr)}Q${x1} ${yb} ${r1(x1 + dir * rr)} ${yb}L${r1(x2 - dir * rr)} ${yb}Q${x2} ${yb} ${x2} ${r1(yb - rr)}L${x2} ${y2}`;
+    const L = Math.max(10, it.w * 4), a = L * 0.55;
+    const head = (x, y) => `M${r1(x - a)} ${r1(y + L)}L${x} ${y}L${r1(x + a)} ${r1(y + L)}`;
+    if (it.arrows >= 1) d += head(x2, y2);
+    if (it.arrows >= 2) d += head(x1, y1);
+    return d;
+  }
   if (it.type === 'tshape') { const l = Math.min(x1, x2), r = Math.max(x1, x2), m = r1((l + r) / 2); return `M${l} ${y1}L${r} ${y1}M${m} ${y1}L${m} ${y2}`; }
   if (it.type === 'arrow') {
     const a = Math.atan2(y2 - y1, x2 - x1), L = Math.max(12, it.w * 4.5);
@@ -489,6 +502,7 @@ function bbox(it) {
   }
   if (it.type === 'text') { const m = textSize(it); return [it.x, it.y, it.x + m.w, it.y + m.h]; }
   if (it.type === 'ta') { const el = taEl(it.id); return [it.x, it.y, it.x + it.w, it.y + (el ? el.offsetHeight : 200)]; }
+  if (it.type === 'ucon') { const p = it.w / 2 + it.w * 2.5; return [Math.min(it.x1, it.x2) - p, Math.min(it.y1, it.y2) - p, Math.max(it.x1, it.x2) + p, it.yb + p]; }
   const p = it.w / 2 + (it.type === 'arrow' ? it.w * 4.5 : 0);
   return [Math.min(it.x1, it.x2) - p, Math.min(it.y1, it.y2) - p, Math.max(it.x1, it.x2) + p, Math.max(it.y1, it.y2) + p];
 }
@@ -510,6 +524,7 @@ function hit(it, x, y, tol) {
   }
   const { x1, y1, x2, y2 } = it;
   if (it.type === 'line' || it.type === 'arrow') return segDist(x, y, x1, y1, x2, y2) <= t;
+  if (it.type === 'ucon') return segDist(x, y, x1, y1, x1, it.yb) <= t || segDist(x, y, x1, it.yb, x2, it.yb) <= t || segDist(x, y, x2, it.yb, x2, y2) <= t;
   if (it.type === 'tshape') { const m = (x1 + x2) / 2; return segDist(x, y, x1, y1, x2, y1) <= t || segDist(x, y, m, y1, m, y2) <= t; }
   const l = Math.min(x1, x2), r = Math.max(x1, x2), tp = Math.min(y1, y2), bt = Math.max(y1, y2);
   if (it.type === 'rect') {
@@ -526,7 +541,7 @@ function topHit(x, y, tol) {
 function moveItem(it, dx, dy) {
   if (it.type === 'stroke') it.pts = it.pts.map(([x, y]) => [r1(x + dx), r1(y + dy)]);
   else if (it.type === 'text' || it.type === 'ta') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
-  else { it.x1 = r1(it.x1 + dx); it.y1 = r1(it.y1 + dy); it.x2 = r1(it.x2 + dx); it.y2 = r1(it.y2 + dy); }
+  else { it.x1 = r1(it.x1 + dx); it.y1 = r1(it.y1 + dy); it.x2 = r1(it.x2 + dx); it.y2 = r1(it.y2 + dy); if (it.yb != null) it.yb = r1(it.yb + dy); }
 }
 
 /* ---------- rendering: ink ---------- */
@@ -558,6 +573,7 @@ function renderSel() {
     for (const [cx, cy] of corners(g)) h += `<rect x="${cx - hs / 2}" y="${cy - hs / 2}" width="${hs}" height="${hs}" rx="${2 / z}" fill="var(--ui)" stroke="var(--accent)" stroke-width="${1.5 / z}"/>`;
   }
   selg.innerHTML = h;
+  if (tool === 'select') renderStyleBar();
 }
 function select(id) { sel = new Set(id ? [id] : []); renderSel(); }
 // Khung bao cả vùng chọn (có lề) và 4 góc để kéo đổi kích thước
@@ -584,7 +600,7 @@ function scaleItem(it, o, ax, ay, sx, sy) {
   if (o.type === 'stroke') it.pts = o.pts.map(([x, y]) => [X(x), Y(y)]);
   else if (o.type === 'text') { it.x = X(o.x); it.y = Y(o.y); it.size = Math.max(8, r1(o.size * Math.sqrt(sx * sy))); }
   else if (o.type === 'ta') { it.x = X(o.x); it.y = Y(o.y); it.w = Math.round(Math.max(340, o.w * sx)); }
-  else { it.x1 = X(o.x1); it.y1 = Y(o.y1); it.x2 = X(o.x2); it.y2 = Y(o.y2); }
+  else { it.x1 = X(o.x1); it.y1 = Y(o.y1); it.x2 = X(o.x2); it.y2 = Y(o.y2); if (o.yb != null) it.yb = Y(o.yb); }
 }
 function pruneSel() { for (const id of [...sel]) if (!byId(id)) sel.delete(id); }
 
@@ -836,9 +852,10 @@ board.addEventListener('pointerdown', e => {
       op = { type: 'draw', it }; liveEl(it); live.setAttribute('d', pathD(it.pts));
       break;
     }
-    case 'line': case 'arrow': case 'rect': case 'ellipse': case 'tshape': {
+    case 'line': case 'arrow': case 'rect': case 'ellipse': case 'tshape': case 'ucon': {
       const it = { id: uid(), type: tool, x1: r1(x), y1: r1(y), x2: r1(x), y2: r1(y), color: st.c, w: st.w };
-      op = { type: 'shape', it }; liveEl(it);
+      if (tool === 'ucon') { it.yb = r1(y + 60); it.arrows = uArrows; }
+      op = { type: 'shape', it, maxY: y }; liveEl(it);
       break;
     }
     case 'eraser': op = { type: 'erase', removed: false }; eraseAt(x, y); break;
@@ -904,13 +921,15 @@ window.addEventListener('pointermove', e => {
     let nx = x, ny = y;
     if (e.shiftKey) {
       const dx = x - it.x1, dy = y - it.y1;
-      if (it.type === 'tshape') { nx = x; ny = y; }
+      if (it.type === 'tshape' || it.type === 'ucon') { nx = x; ny = y; }
       else if (it.type === 'line' || it.type === 'arrow') {
         const a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(dx, dy);
         nx = it.x1 + len * Math.cos(a); ny = it.y1 + len * Math.sin(a);
       } else { const s = Math.max(Math.abs(dx), Math.abs(dy)); nx = it.x1 + Math.sign(dx || 1) * s; ny = it.y1 + Math.sign(dy || 1) * s; }
     }
-    it.x2 = r1(nx); it.y2 = r1(ny); live.setAttribute('d', shapeD(it));
+    it.x2 = r1(nx); it.y2 = r1(ny);
+    if (it.type === 'ucon') { op.maxY = Math.max(op.maxY, y); it.yb = r1(Math.max(op.maxY, Math.max(it.y1, it.y2) + 60)); }
+    live.setAttribute('d', shapeD(it));
   } else if (op.type === 'move') {
     const dx = x - op.lx, dy = y - op.ly; if (!dx && !dy) return;
     op.lx = x; op.ly = y; op.moved = true;
@@ -996,24 +1015,51 @@ function setTool(t) {
   renderStyleBar();
 }
 function renderStyleBar() {
-  const f = family(tool), bar = $('#stylebar');
-  if (!f) { bar.hidden = true; return; }
+  let f = family(tool), st = f && ST[f];
+  const bar = $('#stylebar');
+  // Ở chế độ Chọn: thanh màu/nét áp dụng cho thành phần đang chọn
+  const selVec = tool === 'select' ? selectedItems().filter(i => i.type !== 'ta') : [];
+  if (tool === 'select') {
+    if (!selVec.length) { bar.hidden = true; return; }
+    const kinds = new Set(selVec.map(i => i.type === 'stroke' ? (i.hl ? 'hl' : 'pen') : i.type === 'text' ? 'text' : 'shape'));
+    f = kinds.size === 1 ? [...kinds][0] : null;
+    st = { c: selVec[0].color, w: selVec[0].type === 'text' ? selVec[0].size : selVec[0].w };
+  } else if (!f) { bar.hidden = true; return; }
   bar.hidden = false;
-  const st = ST[f];
   const colors = f === 'hl' ? ['yellow', 'green', 'blue', 'red', 'orange', 'purple'] : COLORS;
   let h = colors.map(c => `<button class="sw" data-c="${c}" style="background:${cvar(c)}" title="${COLOR_NAMES[c]}" aria-label="${COLOR_NAMES[c]}" aria-pressed="${st.c === c}"></button>`).join('');
-  h += '<span class="sep"></span>';
-  h += WOPTS[f].map(w => {
+  if (f) h += '<span class="sep"></span>' + WOPTS[f].map(w => {
     const inner = f === 'text' ? `<b style="font-size:${Math.round(10 + (w - 18) / 2)}px">A</b>` : `<i style="width:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px;height:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px"></i>`;
     return `<button class="wd" data-w="${w}" title="${f === 'text' ? 'Cỡ chữ ' : 'Nét '}${w}" aria-pressed="${st.w === w}">${inner}</button>`;
   }).join('');
+  const selU = selVec.find(i => i.type === 'ucon');
+  if (tool === 'ucon' || selU) {
+    const cur = selU ? selU.arrows : uArrows;
+    const opts = [[0, 'Không mũi tên', '<path d="M5 5v9a4 4 0 004 4h6a4 4 0 004-4V5"/>'], [1, 'Mũi tên ở điểm cuối', '<path d="M5 5v9a4 4 0 004 4h6a4 4 0 004-4V5M16.5 8L19 5l2.5 3"/>'], [2, 'Mũi tên hai đầu', '<path d="M5 5v9a4 4 0 004 4h6a4 4 0 004-4V5M16.5 8L19 5l2.5 3M2.5 8L5 5l2.5 3"/>']];
+    h += '<span class="sep"></span>' + opts.map(([v, t, d]) => `<button class="wd ua" data-ua="${v}" title="${t}" aria-label="${t}" aria-pressed="${cur === v}"><svg viewBox="0 0 24 24">${d}</svg></button>`).join('');
+  }
   bar.innerHTML = h;
 }
 $('#stylebar').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
+  if (tool === 'select') {
+    const items = selectedItems().filter(i => i.type !== 'ta'); if (!items.length) return;
+    for (const it of items) {
+      if (b.dataset.c) it.color = b.dataset.c;
+      if (b.dataset.w) { if (it.type === 'text') it.size = +b.dataset.w; else it.w = +b.dataset.w; }
+      if (b.dataset.ua && it.type === 'ucon') it.arrows = +b.dataset.ua;
+    }
+    commit(); renderSvg(); return;
+  }
   const st = ST[family(tool)];
   if (b.dataset.c) st.c = b.dataset.c;
   if (b.dataset.w) st.w = +b.dataset.w;
+  if (b.dataset.ua) {
+    uArrows = +b.dataset.ua;
+    // Áp dụng luôn cho các đường Nối U đang được chọn
+    const us = selectedItems().filter(i => i.type === 'ucon');
+    if (us.length) { us.forEach(i => i.arrows = uArrows); commit(); renderSvg(); }
+  }
   renderStyleBar();
 });
 $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
@@ -1238,7 +1284,7 @@ $('#btn-zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight
 $('#btn-zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2));
 $('#zoomv').addEventListener('click', fitView);
 
-const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text' };
+const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text', u: 'ucon' };
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeMenus(); $('#modal').hidden = true; }
   if (!curId) return;
