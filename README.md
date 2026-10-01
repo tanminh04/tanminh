@@ -12,6 +12,8 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Công cụ "Chữ T": bấm 1 lần ra khung chữ T sẵn, hoặc kéo để chọn kích thước.
 - Tài khoản chữ T nhập liệu trực tiếp: tên khu vực, tiêu đề hai bên, từng dòng có số bước `(1)`, dấu `+/−`, khoản mục, số tiền.
 - Tự tính Δ hai bên và báo **Cân đối / Lệch**.
+- Mẫu sơ đồ: "Hệ thống Bank + KBNN: phân khúc TT1 / TT2" (vẽ bằng nét, sửa được từng phần).
+- Mũi tên một/hai đầu, đường thẳng liền/chấm chấm.
 - Mẫu giao dịch có sẵn: OMO mua/bán, gửi tiền mặt, ngân hàng cho vay, NHNN mua ngoại tệ, Kho bạc phát hành trái phiếu.
 - Vẽ tay, bút đánh dấu, tẩy, mũi tên, đường thẳng, hình chữ nhật, elip, chữ viết.
 - Kéo/phóng to bảng vô hạn, hỗ trợ cảm ứng (chụm 2 ngón).

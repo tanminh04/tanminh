@@ -182,7 +182,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 .wd b { font-family: var(--hand); font-weight: 400; line-height: 1; }
 
 .menu-wrap { position: relative; }
-.menu { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; max-width: calc(100vw - 24px); background: var(--ui); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 1px; z-index: 20; }
+.menu { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; max-height: calc(100vh - 90px); overflow-y: auto; max-width: calc(100vw - 24px); background: var(--ui); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 1px; z-index: 20; }
 .menu h4 { margin: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; border-radius: 8px; cursor: pointer; }
 .menu button:hover { background: var(--ui-2); }
@@ -345,6 +345,7 @@ const WOPTS = { pen: [2, 3, 5, 8], hl: [10, 18, 28], shape: [1.5, 2.5, 4], text:
 const COLORS = ['ink', 'red', 'blue', 'green', 'orange', 'purple', 'yellow'];
 const COLOR_NAMES = { ink: 'Mực', red: 'Đỏ', blue: 'Xanh dương', green: 'Xanh lá', orange: 'Cam', purple: 'Tím', yellow: 'Vàng' };
 const SHAPES = ['line', 'arrow', 'rect', 'ellipse', 'tshape', 'ucon'];
+let arrowBoth = false, lineDash = false; // kiểu mũi tên / nét chấm cho công cụ Mũi tên, Đường thẳng
 let uDir = 'down'; // chiều mặc định khi kéo thẳng: 'down' = U, 'up' = ∩
 let uArrows = 2; // Nối U: 0 = không mũi tên, 1 = mũi tên ở điểm cuối, 2 = hai đầu
 
@@ -493,7 +494,12 @@ function shapeD(it) {
     const a = Math.atan2(y2 - y1, x2 - x1), L = Math.max(12, it.w * 4.5);
     const h1 = [r1(x2 - L * Math.cos(a - 0.45)), r1(y2 - L * Math.sin(a - 0.45))];
     const h2 = [r1(x2 - L * Math.cos(a + 0.45)), r1(y2 - L * Math.sin(a + 0.45))];
-    return `M${x1} ${y1}L${x2} ${y2}M${h1[0]} ${h1[1]}L${x2} ${y2}L${h2[0]} ${h2[1]}`;
+    let d = `M${x1} ${y1}L${x2} ${y2}M${h1[0]} ${h1[1]}L${x2} ${y2}L${h2[0]} ${h2[1]}`;
+    if (it.both) {
+      const g1 = [r1(x1 + L * Math.cos(a - 0.45)), r1(y1 + L * Math.sin(a - 0.45))], g2 = [r1(x1 + L * Math.cos(a + 0.45)), r1(y1 + L * Math.sin(a + 0.45))];
+      d += `M${g1[0]} ${g1[1]}L${x1} ${y1}L${g2[0]} ${g2[1]}`;
+    }
+    return d;
   }
   const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
   if (it.type === 'rect') return `M${x} ${y}h${w}v${h}h${-w}Z`;
@@ -587,7 +593,7 @@ function itemSvg(it) {
       lines.map((l, i) => `<tspan x="${it.x}" y="${r1(it.y + it.size * 0.9 + i * it.size * 1.25)}">${esc(l) || ' '}</tspan>`).join('') + '</text>';
   }
   const d = it.type === 'stroke' ? pathD(it.pts) : shapeD(it);
-  return `<path d="${d}" stroke="${cvar(it.color)}" stroke-width="${it.w}" fill="none" stroke-linecap="round" stroke-linejoin="round"${it.hl ? ' opacity=".38"' : ''}/>`;
+  return `<path d="${d}" stroke="${cvar(it.color)}" stroke-width="${it.w}" fill="none" stroke-linecap="round" stroke-linejoin="round"${it.hl ? ' opacity=".38"' : ''}${it.dash ? ` stroke-dasharray="0 ${r1(it.w * 3.2)}"` : ''}/>`;
 }
 function renderSvg() { layer.innerHTML = S.items.map(itemSvg).join(''); renderSel(); }
 function renderSel() {
@@ -987,6 +993,8 @@ board.addEventListener('pointerdown', e => {
     }
     case 'line': case 'arrow': case 'rect': case 'ellipse': case 'tshape': case 'ucon': {
       const it = { id: uid(), type: tool, x1: r1(x), y1: r1(y), x2: r1(x), y2: r1(y), color: st.c, w: st.w };
+      if (tool === 'arrow' && arrowBoth) it.both = true;
+      if (tool === 'line' && lineDash) it.dash = true;
       if (tool === 'ucon') { it.yb = r1(uDir === 'up' ? y - 60 : y + 60); it.arrows = uArrows; }
       op = { type: 'shape', it, maxY: y, minY: y }; liveEl(it);
       break;
@@ -1185,6 +1193,17 @@ function renderStyleBar() {
     const inner = f === 'text' ? `<b style="font-size:${Math.round(10 + (w - 18) / 2)}px">A</b>` : `<i style="width:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px;height:${Math.min(18, Math.max(3, w * (f === 'hl' ? .6 : 1.3)))}px"></i>`;
     return `<button class="wd" data-w="${w}" title="${f === 'text' ? 'Cỡ chữ ' : 'Nét '}${w}" aria-pressed="${st.w === w}">${inner}</button>`;
   }).join('');
+  const selArr = selVec.find(i => i.type === 'arrow'), selLine = selVec.find(i => i.type === 'line');
+  if (tool === 'arrow' || selArr) {
+    const cur = selArr ? !!selArr.both : arrowBoth;
+    h += '<span class="sep"></span>' + [[0, 'Mũi tên một đầu', '<path d="M4 12h16M14 6l6 6-6 6"/>'], [1, 'Mũi tên hai đầu ↔', '<path d="M4 12h16M14 6l6 6-6 6M10 6l-6 6 6 6"/>']]
+      .map(([v, t, d]) => `<button class="wd ua" data-ab="${v}" title="${t}" aria-label="${t}" aria-pressed="${cur === !!v}"><svg viewBox="0 0 24 24">${d}</svg></button>`).join('');
+  }
+  if (tool === 'line' || selLine) {
+    const cur = selLine ? !!selLine.dash : lineDash;
+    h += '<span class="sep"></span>' + [[0, 'Nét liền', '<path d="M4 12h16"/>'], [1, 'Nét chấm chấm', '<path d="M4 12h16" stroke-dasharray="0 3.5" stroke-width="2.4"/>']]
+      .map(([v, t, d]) => `<button class="wd ua" data-ld="${v}" title="${t}" aria-label="${t}" aria-pressed="${cur === !!v}"><svg viewBox="0 0 24 24">${d}</svg></button>`).join('');
+  }
   const selTexts = selVec.filter(i => i.type === 'text');
   if (tool === 'text' || selTexts.length) {
     const cur = curEdit ? listKind(curEdit.ta.value) : selTexts.length ? listKind(selTexts[0].text) : textList;
@@ -1222,6 +1241,8 @@ $('#stylebar').addEventListener('click', e => {
       if (b.dataset.w) { if (isTextish(it)) it.size = +b.dataset.w; else it.w = +b.dataset.w; }
       if (b.dataset.ua && it.type === 'ucon') it.arrows = +b.dataset.ua;
       if (b.dataset.ud && it.type === 'ucon') setUDir(it, b.dataset.ud);
+      if (b.dataset.ab && it.type === 'arrow') { if (+b.dataset.ab) it.both = true; else delete it.both; }
+      if (b.dataset.ld && it.type === 'line') { if (+b.dataset.ld) it.dash = true; else delete it.dash; }
       if (b.dataset.list && it.type === 'text') it.text = toggleList(it.text, b.dataset.list);
     }
     commit(); renderSvg(); return;
@@ -1231,6 +1252,8 @@ $('#stylebar').addEventListener('click', e => {
   if (b.dataset.w) st.w = +b.dataset.w;
   if (b.dataset.list) textList = textList === b.dataset.list ? null : b.dataset.list;
   if (b.dataset.ud) uDir = b.dataset.ud;
+  if (b.dataset.ab) arrowBoth = !!+b.dataset.ab;
+  if (b.dataset.ld) lineDash = !!+b.dataset.ld;
   if (b.dataset.ua) {
     uArrows = +b.dataset.ua;
     // Áp dụng luôn cho các đường Nối U đang được chọn
@@ -1298,9 +1321,51 @@ function insertPreset(p, at) {
   }
   return made;
 }
+/* ---------- mẫu sơ đồ (vẽ bằng nét, sửa được từng phần) ---------- */
+const dTx = (x, y, text, size = 20) => ({ type: 'text', x, y, text, color: 'ink', size });
+const dLn = (x1, y1, x2, y2, w = 2, o = {}) => ({ type: 'line', x1, y1, x2, y2, color: 'ink', w, ...o });
+const dAr = (x1, y1, x2, y2, both = true) => ({ type: 'arrow', x1, y1, x2, y2, color: 'ink', w: 1.6, ...(both ? { both: true } : {}) });
+// Ngoặc vuông "[" có vạch giữa để gắn nhãn
+const dBracket = (x, y1, y2, ym) => [dLn(x, y1, x, y2, 3), dLn(x, y1, x + 46, y1, 3), dLn(x, y2, x + 46, y2, 3), dLn(x - 47, ym, x, ym, 3)];
+const DIAGRAMS = [
+  { name: 'Hệ thống Bank + KBNN: phân khúc TT1 / TT2', note: 'Chuỗi TGA → TGKB → liên ngân hàng → cho vay ngắn/dài hạn → CD-FI, Equity', build: () => [
+    dTx(612, 74, 'System:\nBank+KBNN', 20),
+    { type: 'tshape', x1: 530, y1: 132, x2: 830, y2: 1225, color: 'ink', w: 2 },
+    dTx(562, 162, 'TGA'), dTx(760, 275, 'TGKB'),
+    dTx(547, 375, 'Interbank\nLending'), dTx(762, 507, 'Interbank\nDeposit'),
+    dTx(538, 620, 'Short-term\nLending'), dTx(753, 770, 'Deposit\nTT1'),
+    dTx(515, 882, 'Long-term\nLending'), dTx(720, 1015, 'CD-FI,\nEquity'),
+    dAr(645, 208, 752, 280), dAr(762, 322, 655, 392), dAr(655, 433, 752, 505), dAr(752, 565, 645, 635),
+    dAr(645, 698, 740, 765), dAr(735, 826, 625, 898, false), dAr(636, 940, 735, 1012),
+    dLn(527, 580, 820, 580, 2.5, { dash: true }),
+    ...dBracket(332, 130, 590, 360), dTx(172, 345, 'TT2'),
+    ...dBracket(332, 657, 1115, 885), dTx(208, 872, 'TT1'),
+    { type: 'rect', x1: 885, y1: 517, x2: 1262, y2: 712, color: 'ink', w: 1.5 },
+    dTx(897, 556, 'COF VND cao do ngăn cách ở phần\nTT1 và TT2, không có nhu cầu vay\nngắn buộc TT1 phải cân cho nhu\ncầu TT1', 19),
+  ] },
+];
+function insertDiagram(dg) {
+  const raw = dg.build().map(it => ({ id: uid(), ...it }));
+  let b = null;
+  for (const it of raw) { const k = bbox(it); b = b ? [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])] : k; }
+  const cb = contentBox();
+  let dx, dy;
+  if (cb) { dx = cb[0] - b[0]; dy = cb[3] + 140 - b[1]; }
+  else { const [cx, cy] = toWorld(board.clientWidth / 2, board.clientHeight / 2); dx = cx - (b[0] + b[2]) / 2; dy = cy - (b[1] + b[3]) / 2; }
+  raw.forEach(it => moveItem(it, r1(dx), r1(dy)));
+  S.items.push(...raw); sel = new Set(raw.map(i => i.id));
+  commit(); renderAll();
+  // Đưa khung nhìn tới sơ đồ vừa chèn
+  const W2 = board.clientWidth, H2 = board.clientHeight, bw = b[2] - b[0], bh = b[3] - b[1];
+  const z = Math.max(0.15, Math.min(1, (W2 - 200) / bw, (H2 - 140) / bh)), mx = b[0] + dx + bw / 2, my = b[1] + dy + bh / 2;
+  S.view = { x: W2 / 2 + (W2 < 720 ? 0 : 40) - mx * z, y: H2 / 2 + 20 - my * z, z }; applyView(); renderSel(); saveSoon();
+}
 $('#menu-presets').innerHTML = '<h4>Chèn giao dịch mẫu (số liệu giả định)</h4>' +
-  PRESETS.map((p, i) => `<button data-p="${i}">${esc(p.name)}${p.note ? `<small>${esc(p.note)}</small>` : '<small>3 tài khoản trống để tự nhập</small>'}</button>`).join('');
+  PRESETS.map((p, i) => `<button data-p="${i}">${esc(p.name)}${p.note ? `<small>${esc(p.note)}</small>` : '<small>3 tài khoản trống để tự nhập</small>'}</button>`).join('') +
+  '<hr><h4>Mẫu sơ đồ</h4>' + DIAGRAMS.map((d, i) => `<button data-dg="${i}">${esc(d.name)}<small>${esc(d.note)}</small></button>`).join('');
 $('#menu-presets').addEventListener('click', e => {
+  const g = e.target.closest('[data-dg]');
+  if (g) { closeMenus(); setTool('select'); insertDiagram(DIAGRAMS[+g.dataset.dg]); toast('Đã chèn sơ đồ — mọi phần đều sửa, kéo, xoá được'); return; }
   const b = e.target.closest('[data-p]'); if (!b) return;
   closeMenus(); setTool('select'); insertPreset(PRESETS[+b.dataset.p]);
   toast('Đã chèn — sửa trực tiếp số liệu cho đúng đề bài');
@@ -1553,6 +1618,7 @@ function renderCanvas(maxW, maxH) {
     } else {
       ctx.strokeStyle = cval(it.color); ctx.lineWidth = it.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       if (it.hl) ctx.globalAlpha = 0.38;
+      if (it.dash) ctx.setLineDash([0, it.w * 3.2]);
       ctx.stroke(new Path2D(it.type === 'stroke' ? pathD(it.pts) : shapeD(it)));
     }
     ctx.restore();
