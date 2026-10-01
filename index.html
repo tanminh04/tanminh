@@ -167,7 +167,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 3px; flex: none; }
 .col > .sep { width: 22px; height: 1px; margin: 3px 0; }
 #tools { max-height: calc(100% - 150px); overflow-y: auto; }
-#tools .tb { width: 60px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+#tools .tb { width: 60px; height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 #tools .tb svg { flex: none; width: 20px; height: 20px; }
 #tools .tb span { font-size: 10px; font-weight: 500; line-height: 1.1; white-space: nowrap; color: var(--muted); }
 #tools .tb[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
@@ -296,11 +296,12 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
   <button class="tb" data-tool="ellipse" title="Hình elip (O)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg><span>Elip</span></button>
   <button class="tb" data-tool="text" title="Chữ viết (T)"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg><span>Chữ</span></button>
   <button class="tb" data-tool="frac" title="Phân số: tử số / gạch ngang / mẫu số (F). Enter để xuống mẫu số"><svg viewBox="0 0 24 24"><path d="M5 12h14M9 4.5h6M9 19.5h6"/></svg><span>Phân số</span></button>
+  <button class="tb" id="btn-img" title="Chèn ảnh từ máy. Cũng có thể dán (Ctrl/⌘+V) hoặc kéo thả ảnh vào bảng"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></svg><span>Ảnh</span></button>
 </div>
 
 <div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
 
-<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>F</kbd> phân số · <kbd>Space</kbd> chọn · kéo góc để đổi cỡ · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · giữ <kbd>Space</kbd>+kéo để di chuyển bảng · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>F</kbd> phân số · <kbd>Ctrl</kbd>+<kbd>V</kbd> dán ảnh · <kbd>Space</kbd> chọn · kéo góc để đổi cỡ · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · giữ <kbd>Space</kbd>+kéo để di chuyển bảng · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
 <div class="ui" id="toast" role="status" hidden></div>
 
 <div id="modal" hidden>
@@ -326,6 +327,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
   <option value="Fed"></option>
 </datalist>
 <input type="file" id="file" accept=".json,application/json" hidden>
+<input type="file" id="img-file" accept="image/*" multiple hidden>
 
 <script>
 (() => {
@@ -510,6 +512,7 @@ function fracSize(it) {
 }
 function bbox(it) {
   if (it.type === 'frac') { const m = fracSize(it); return [it.x, it.y, it.x + m.w, it.y + m.h]; }
+  if (it.type === 'img') return [it.x, it.y, it.x + it.w, it.y + it.h];
   if (it.type === 'stroke') {
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
     for (const [x, y] of it.pts) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
@@ -529,7 +532,7 @@ function segDist(px, py, ax, ay, bx, by) {
 }
 function hit(it, x, y, tol) {
   if (it.type === 'ta') return false;
-  if (isTextish(it)) { const b = bbox(it); return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol; }
+  if (isTextish(it) || it.type === 'img') { const b = bbox(it); return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol; }
   const t = tol + it.w / 2;
   if (it.type === 'stroke') {
     const p = it.pts;
@@ -555,13 +558,18 @@ function topHit(x, y, tol) {
 }
 function moveItem(it, dx, dy) {
   if (it.type === 'stroke') it.pts = it.pts.map(([x, y]) => [r1(x + dx), r1(y + dy)]);
-  else if (isTextish(it) || it.type === 'ta') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
+  else if (isTextish(it) || it.type === 'ta' || it.type === 'img') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
   else { it.x1 = r1(it.x1 + dx); it.y1 = r1(it.y1 + dy); it.x2 = r1(it.x2 + dx); it.y2 = r1(it.y2 + dy); if (it.yb != null) it.yb = r1(it.yb + dy); }
 }
 
 /* ---------- rendering: ink ---------- */
 function itemSvg(it) {
   if (it.type === 'ta' || it.id === editingId) return '';
+  if (it.type === 'img') {
+    const c = imgCache.get(it.ref);
+    if (!c || !c.url) { loadImg(it.ref); return `<rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" fill="var(--ui-2)" stroke="var(--line)"/>`; }
+    return `<image href="${c.url}" x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" preserveAspectRatio="none"/>`;
+  }
   if (it.type === 'frac') {
     const m = fracSize(it), cx = r1(it.x + m.w / 2), c = cvar(it.color);
     return `<g font-family='${HAND}' font-size="${it.size}" fill="${c}" text-anchor="middle">` +
@@ -620,6 +628,7 @@ function handleAt(x, y, touch) {
 function scaleItem(it, o, ax, ay, sx, sy) {
   const X = v => r1(ax + (v - ax) * sx), Y = v => r1(ay + (v - ay) * sy);
   if (o.type === 'stroke') it.pts = o.pts.map(([x, y]) => [X(x), Y(y)]);
+  else if (o.type === 'img') { it.x = X(o.x); it.y = Y(o.y); it.w = Math.max(8, r1(o.w * sx)); it.h = Math.max(8, r1(o.h * sy)); }
   else if (isTextish(o)) { it.x = X(o.x); it.y = Y(o.y); it.size = Math.max(8, r1(o.size * Math.sqrt(sx * sy))); }
   else if (o.type === 'ta') { it.x = X(o.x); it.y = Y(o.y); it.w = Math.round(Math.max(340, o.w * sx)); }
   else { it.x1 = X(o.x1); it.y1 = Y(o.y1); it.x2 = X(o.x2); it.y2 = Y(o.y2); if (o.yb != null) it.yb = Y(o.yb); }
@@ -639,7 +648,8 @@ function copySel() {
   clip = JSON.stringify(items); pasteN = 0;
   return true;
 }
-function pasteClip() {
+function pasteClip(json) {
+  if (json && json !== clip) { clip = json; pasteN = 0; }
   if (!clip) { toast('Chưa sao chép gì. Chọn một thành phần rồi nhấn Ctrl+C'); return; }
   pasteN++;
   const d = 30 * pasteN, made = JSON.parse(clip).map(it => cloneItem(it, d, d));
@@ -918,7 +928,7 @@ board.addEventListener('pointerdown', e => {
     const g = selBox(), cs = corners(g), [ax, ay] = cs[(hIdx + 2) % 4], [cx, cy] = cs[hIdx];
     const items = selectedItems();
     op = { type: 'scale', items, orig: items.map(i => JSON.parse(JSON.stringify(i))), ax, ay, cx, cy,
-      uniform: items.every(isTextish), moved: false };
+      uniform: items.every(i => isTextish(i) || i.type === 'img'), moved: false };
     board.setPointerCapture(e.pointerId);
     return;
   }
@@ -986,7 +996,7 @@ board.addEventListener('pointerdown', e => {
 function eraseAt(x, y) {
   const tol = 6 / S.view.z;
   const before = S.items.length;
-  S.items = S.items.filter(it => !hit(it, x, y, tol));
+  S.items = S.items.filter(it => it.type === 'img' || !hit(it, x, y, tol));
   if (S.items.length !== before) { op.removed = true; pruneSel(); renderSvg(); }
 }
 
@@ -1144,7 +1154,7 @@ function renderStyleBar() {
   let f = family(tool), st = f && ST[f];
   const bar = $('#stylebar');
   // Ở chế độ Chọn: thanh màu/nét áp dụng cho thành phần đang chọn
-  const selVec = tool === 'select' ? selectedItems().filter(i => i.type !== 'ta') : [];
+  const selVec = tool === 'select' ? selectedItems().filter(i => i.type !== 'ta' && i.type !== 'img') : [];
   if (tool === 'select') {
     if (!selVec.length) { bar.hidden = true; return; }
     const kinds = new Set(selVec.map(i => i.type === 'stroke' ? (i.hl ? 'hl' : 'pen') : isTextish(i) ? 'text' : 'shape'));
@@ -1186,7 +1196,7 @@ $('#stylebar').addEventListener('click', e => {
     renderStyleBar(); ta.focus(); return;
   }
   if (tool === 'select') {
-    const items = selectedItems().filter(i => i.type !== 'ta'); if (!items.length) return;
+    const items = selectedItems().filter(i => i.type !== 'ta' && i.type !== 'img'); if (!items.length) return;
     for (const it of items) {
       if (b.dataset.c) it.color = b.dataset.c;
       if (b.dataset.w) { if (isTextish(it)) it.size = +b.dataset.w; else it.w = +b.dataset.w; }
@@ -1208,6 +1218,7 @@ $('#stylebar').addEventListener('click', e => {
   renderStyleBar();
 });
 $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
+$('#btn-img').addEventListener('click', () => $('#img-file').click());
 
 /* ---------- presets ---------- */
 const P = (s, lb, am) => [s, lb, am];
@@ -1298,8 +1309,132 @@ $('#btn-clear').addEventListener('click', e => {
   if (!b.dataset.armed) { b.dataset.armed = '1'; b.innerHTML = 'Nhấn lần nữa để xoá<small>Tất cả tài khoản và nét vẽ sẽ bị xoá</small>'; armT = setTimeout(clearArm, 4000); return; }
   S.items = []; sel = new Set(); commit(); renderAll(); closeMenus(); toast('Đã xoá bảng. Nhấn Ctrl+Z để khôi phục');
 });
-$('#btn-save-json').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'bang-t-account', version: 1, items: S.items }, null, 1)], { type: 'application/json' });
+/* ---------- ảnh: lưu trong IndexedDB, bảng chỉ giữ mã tham chiếu ---------- */
+const imgCache = new Map(); // ref -> { url, el, p }
+let idbP = null;
+function idb() {
+  if (!idbP) idbP = new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open('tboard-img', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('imgs');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+  return idbP;
+}
+const idbReq = (mode, fn) => idb().then(db => new Promise((res, rej) => {
+  const tx = db.transaction('imgs', mode), r = fn(tx.objectStore('imgs'));
+  tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error);
+}));
+const imgPut = (ref, blob) => idbReq('readwrite', st => st.put(blob, ref));
+const imgGet = ref => idbReq('readonly', st => st.get(ref));
+function loadImg(ref) {
+  let c = imgCache.get(ref);
+  if (c) return c.p;
+  c = {}; imgCache.set(ref, c);
+  c.p = imgGet(ref).then(blob => new Promise(res => {
+    if (!blob) { res(); return; }
+    c.url = URL.createObjectURL(blob);
+    c.el = new Image(); c.el.onload = c.el.onerror = () => res(); c.el.src = c.url;
+  })).then(() => { if (c.url) { renderSvg(); dirtyThumb = true; clearTimeout(thumbT); thumbT = setTimeout(saveThumb, 1500); } }).catch(() => {});
+  return c.p;
+}
+// Thu nhỏ ảnh lớn (cạnh dài tối đa 1800px) để tiết kiệm bộ nhớ
+function prepImage(file) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1800 / Math.max(im.naturalWidth, im.naturalHeight));
+      if (k === 1 && file.size < 1.5e6) { URL.revokeObjectURL(u); res({ blob: file, w: im.naturalWidth, h: im.naturalHeight }); return; }
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(im.naturalWidth * k); cv.height = Math.round(im.naturalHeight * k);
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(u);
+      const png = file.type === 'image/png' && cv.width * cv.height < 1.2e6;
+      cv.toBlob(b => b ? res({ blob: b, w: cv.width, h: cv.height }) : rej(), png ? 'image/png' : 'image/jpeg', 0.88);
+    };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(); };
+    im.src = u;
+  });
+}
+let lastPtr = null;
+board.addEventListener('pointermove', e => { lastPtr = [e.clientX, e.clientY]; });
+function dropPoint() {
+  const r = board.getBoundingClientRect();
+  const p = lastPtr && lastPtr[0] > r.left + 70 && lastPtr[1] > r.top + 60 ? lastPtr : [r.left + r.width / 2, r.top + r.height / 2];
+  return toWorld(p[0], p[1]);
+}
+async function addImages(files, at) {
+  files = [...files].filter(f => f && f.type && f.type.startsWith('image/'));
+  if (!files.length || !curId) return false;
+  let [cx, cy] = at || dropPoint();
+  const made = [];
+  for (const f of files) {
+    try {
+      const { blob, w, h } = await prepImage(f);
+      const ref = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      await imgPut(ref, blob);
+      const maxW = Math.min(640, (board.clientWidth * 0.6) / S.view.z), k = Math.min(1, maxW / w);
+      const it = { id: uid(), type: 'img', ref, x: r1(cx - w * k / 2), y: r1(cy - h * k / 2), w: r1(w * k), h: r1(h * k) };
+      made.push(it); cx += 30; cy += 30;
+      loadImg(ref);
+    } catch (e) { toast('Không đọc được ảnh này hoặc bộ nhớ trình duyệt đã đầy'); }
+  }
+  if (!made.length) return true;
+  S.items.push(...made); setTool('select'); sel = new Set(made.map(i => i.id));
+  commit(); renderAll();
+  toast(made.length > 1 ? `Đã thêm ${made.length} ảnh` : 'Đã thêm ảnh — kéo góc để đổi cỡ');
+  return true;
+}
+const isTyping = () => { const a = document.activeElement; return a && a.matches && a.matches('input, textarea, [contenteditable]'); };
+const CLIP_TAG = 'tboard-clip:';
+document.addEventListener('copy', e => {
+  if (!curId || isTyping() || !copySel()) return;
+  e.preventDefault(); e.clipboardData.setData('text/plain', CLIP_TAG + clip);
+  toast(`Đã sao chép ${sel.size} thành phần — Ctrl+V để dán`);
+});
+document.addEventListener('cut', e => {
+  if (!curId || isTyping() || !copySel()) return;
+  e.preventDefault(); e.clipboardData.setData('text/plain', CLIP_TAG + clip);
+  deleteSel(); toast('Đã cắt — Ctrl+V để dán');
+});
+document.addEventListener('paste', e => {
+  if (!curId || isTyping()) return;
+  const dt = e.clipboardData;
+  const files = dt ? [...dt.items].filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()) : [];
+  e.preventDefault();
+  if (files.length) { addImages(files); return; }
+  const text = dt ? dt.getData('text/plain') : '';
+  if (text.startsWith(CLIP_TAG)) { pasteClip(text.slice(CLIP_TAG.length)); return; }
+  if (text.trim()) {
+    // Dán chữ từ ngoài vào thành một dòng chữ trên bảng
+    const [x, y] = dropPoint(), st = ST.text;
+    const it = { id: uid(), type: 'text', x: r1(x), y: r1(y), text: text.replace(/\r/g, '').trim(), color: st.c, size: st.w };
+    S.items.push(it); setTool('select'); select(it.id); commit(); renderSvg(); return;
+  }
+  if (clip) pasteClip();
+});
+board.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
+board.addEventListener('drop', e => {
+  const files = e.dataTransfer?.files; if (!files || !files.length) return;
+  e.preventDefault(); addImages(files, toWorld(e.clientX, e.clientY));
+});
+$('#img-file').addEventListener('change', e => { addImages(e.target.files); e.target.value = ''; });
+// Dọn ảnh không còn bảng nào dùng (chạy khi mở trang)
+function gcImages() {
+  const used = new Set();
+  for (const b of loadIndex()) { const raw = lsGet(BKEY + b.id) || ''; for (const m of raw.matchAll(/"ref":"(m[a-z0-9]+)"/g)) used.add(m[1]); }
+  idbReq('readwrite', st => {
+    const r = st.openKeyCursor ? st.openKeyCursor() : st.openCursor();
+    r.onsuccess = () => { const c = r.result; if (!c) return; if (!used.has(c.key)) st.delete(c.key); c.continue(); };
+  }).catch(() => {});
+}
+const blobToData = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
+
+$('#btn-save-json').addEventListener('click', async () => {
+  const images = {};
+  for (const it of S.items) if (it.type === 'img' && !images[it.ref]) { try { const b = await imgGet(it.ref); if (b) images[it.ref] = await blobToData(b); } catch (e) {} }
+  const blob = new Blob([JSON.stringify({ app: 'bang-t-account', version: 1, items: S.items, images }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'bang-t-account.json';
   document.body.appendChild(a); a.click(); a.remove();
@@ -1310,10 +1445,11 @@ $('#btn-open-json').addEventListener('click', () => { closeMenus(); $('#file').c
 $('#file').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
   const rd = new FileReader();
-  rd.onload = () => {
+  rd.onload = async () => {
     try {
       const d = JSON.parse(rd.result), items = Array.isArray(d) ? d : d.items;
       if (!Array.isArray(items)) throw new Error();
+      for (const [ref, data] of Object.entries(d.images || {})) { try { await imgPut(ref, await (await fetch(data)).blob()); imgCache.delete(ref); } catch (e) {} }
       S.items = items.filter(i => i && i.id && i.type); sel = new Set();
       commit(); renderAll(); fitView(); toast('Đã mở bảng từ tệp');
     } catch (err) { toast('Tệp không đúng định dạng của Bảng T-Account'); }
@@ -1379,7 +1515,10 @@ function renderCanvas(maxW, maxH) {
   for (const it of S.items) {
     if (it.type === 'ta') continue;
     ctx.save();
-    if (it.type === 'frac') {
+    if (it.type === 'img') {
+      const c = imgCache.get(it.ref);
+      if (c && c.el && c.el.complete && c.el.naturalWidth) ctx.drawImage(c.el, it.x, it.y, it.w, it.h);
+    } else if (it.type === 'frac') {
       const m = fracSize(it), cx = it.x + m.w / 2;
       ctx.fillStyle = ctx.strokeStyle = cval(it.color); ctx.font = `${it.size}px ${HAND}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
       ctx.fillText(it.num || '', cx, it.y + it.size * 0.9);
@@ -1401,6 +1540,7 @@ function renderCanvas(maxW, maxH) {
 async function exportPNG() {
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   try { await document.fonts.ready; } catch (e) {}
+  await Promise.all(S.items.filter(i => i.type === 'img').map(i => loadImg(i.ref)));
   const cv = renderCanvas();
   if (!cv) { toast('Bảng đang trống, chưa có gì để xuất'); return; }
   lastCanvas = cv;
@@ -1452,9 +1592,7 @@ window.addEventListener('keydown', e => {
   if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
   if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z * 1.2); return; }
   if (mod && e.key === '-') { e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2); return; }
-  if (mod && e.key.toLowerCase() === 'c') { if (copySel()) { e.preventDefault(); toast(`Đã sao chép ${sel.size} thành phần — Ctrl+V để dán`); } return; }
-  if (mod && e.key.toLowerCase() === 'x') { if (copySel()) { e.preventDefault(); deleteSel(); toast('Đã cắt — Ctrl+V để dán'); } return; }
-  if (mod && e.key.toLowerCase() === 'v') { if (clip) { e.preventDefault(); pasteClip(); } return; }
+  // Ctrl/⌘ + C, X, V được xử lý qua sự kiện copy / cut / paste bên dưới (để dán được cả ảnh từ ngoài vào)
   if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSel(); return; }
   if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); setTool('select'); sel = new Set(S.items.map(i => i.id)); renderSel(); return; }
   if (mod) return;
@@ -1574,6 +1712,7 @@ window.addEventListener('pagehide', () => { if (curId) { saveNow(); saveThumb();
 document.addEventListener('visibilitychange', () => { if (document.hidden && curId) { saveNow(); saveThumb(); } });
 
 /* ---------- boot ---------- */
+try { gcImages(); } catch (e) {}
 if (!loadIndex().length) {
   let legacy = null;
   try { legacy = JSON.parse(lsGet('tboard.v1') || 'null'); } catch (e) {}
