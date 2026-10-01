@@ -5,6 +5,7 @@ Bảng trắng trên trình duyệt để vẽ tài khoản chữ T (T-account) 
 Mở `index.html` bằng trình duyệt là dùng được, không cần cài đặt.
 
 ## Tính năng
+- Chữ có danh sách: gõ `- ` đầu dòng (hoặc nút trên thanh bên) để ra gạch đầu dòng •, nút đánh số 1. 2. 3.; Enter tự thêm dòng, Enter ở dòng trống để thoát, Tab / Shift+Tab thụt lề.
 - Công cụ "Phân số" (phím F): tử số, gạch ngang, mẫu số; Enter để xuống mẫu số, gạch tự dài theo chữ.
 - Công cụ "Nối U" (phím U): đường chữ U bo góc có mũi tên, kéo từ điểm đầu xuống, sang ngang rồi lên điểm cuối; đáy U theo điểm thấp nhất khi kéo.
 - Công cụ "Chữ T": bấm 1 lần ra khung chữ T sẵn, hoặc kéo để chọn kích thước.
