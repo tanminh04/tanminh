@@ -261,7 +261,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
     <button class="txtbtn" id="btn-presets" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 9h18M12 9v11"/></svg><span>Mẫu<span class="hide-sm"> giao dịch</span></span></button>
     <div class="menu" id="menu-presets" hidden></div>
   </div>
-  <button class="txtbtn primary" id="btn-export" title="Xuất bảng thành ảnh PNG"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></svg><span class="hide-sm">Xuất ảnh</span></button>
+  <button class="txtbtn primary" id="btn-export" title="Xuất bảng ra PNG hoặc PDF"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></svg><span class="hide-sm">Xuất PNG / PDF</span></button>
   <div class="menu-wrap">
     <button class="tb" id="btn-more" title="Tuỳ chọn khác" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
     <div class="menu" id="menu-more" hidden>
@@ -306,13 +306,15 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 
 <div id="modal" hidden>
   <div class="modal-card" role="dialog" aria-labelledby="modal-title">
-    <h3 id="modal-title">Ảnh bảng T-Account</h3>
-    <p>Nếu nút Tải không hoạt động, nhấn chuột phải (hoặc nhấn giữ trên điện thoại) vào ảnh và chọn Lưu ảnh.</p>
+    <h3 id="modal-title">Xuất bảng</h3>
+    <p>PDF luôn dùng nền trắng để in và nộp bài. Nếu nút tải không hoạt động, nhấn chuột phải (hoặc nhấn giữ trên điện thoại) vào ảnh và chọn Lưu ảnh.</p>
     <div class="modal-img"><img id="modal-img" alt="Ảnh xuất của bảng"></div>
     <div class="modal-actions">
       <button class="txtbtn" id="btn-copy-img">Sao chép ảnh</button>
       <button class="txtbtn" id="btn-dl-img">Tải PNG</button>
-      <button class="txtbtn primary" id="btn-close-modal">Đóng</button>
+      <button class="txtbtn" id="btn-pdf-fit" title="Một trang, khổ đúng bằng kích thước nội dung bảng">PDF theo khổ bảng</button>
+      <button class="txtbtn primary" id="btn-pdf-a4" title="Một trang A4, tự xoay ngang/dọc theo nội dung">Tải PDF (A4)</button>
+      <button class="txtbtn" id="btn-close-modal">Đóng</button>
     </div>
   </div>
 </div>
@@ -1522,11 +1524,7 @@ $('#btn-save-json').addEventListener('click', async () => {
   const images = {};
   for (const it of S.items) if (it.type === 'img' && !images[it.ref]) { try { const b = await imgGet(it.ref); if (b) images[it.ref] = await blobToData(b); } catch (e) {} }
   const blob = new Blob([JSON.stringify({ app: 'bang-t-account', version: 1, items: S.items, images }, null, 1)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'bang-t-account.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  closeMenus(); toast('Đang tải tệp .json (nếu trình duyệt cho phép)');
+  closeMenus(); saveFile(safeName() + '.json', blob);
 });
 $('#btn-open-json').addEventListener('click', () => { closeMenus(); $('#file').click(); });
 $('#file').addEventListener('change', e => {
@@ -1638,9 +1636,74 @@ async function exportPNG() {
 $('#btn-export').addEventListener('click', exportPNG);
 $('#btn-close-modal').addEventListener('click', () => { $('#modal').hidden = true; });
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
-$('#btn-dl-img').addEventListener('click', () => {
-  const a = document.createElement('a'); a.href = $('#modal-img').src; a.download = 'bang-t-account.png';
+// Lưu file: trong Artifact dùng quyền "downloads" (có hộp xác nhận), ngoài ra dùng liên kết tải thông thường
+const dlNs = window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+const safeName = () => (($('#board-title').value || '').trim() || 'bang-t-account').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
+async function saveFile(filename, blob) {
+  const dl = await Promise.race([dlNs, new Promise(r => setTimeout(() => r(null), 1500))]);
+  if (dl) {
+    try { await dl.save({ filename, data: blob }); toast('Đã lưu ' + filename); }
+    catch (e) {
+      const c = e && e.code;
+      if (c === 'declined') return;
+      toast(c === 'rate_limited' ? 'Đang có một hộp lưu file mở, thử lại sau giây lát' : 'Không lưu được file ở chế độ xem này');
+    }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const canvasBlob = (cv, type, q) => new Promise(res => cv.toBlob(res, type, q));
+
+/* ---------- PDF: một trang chứa ảnh JPEG của bảng (tự tạo, không cần thư viện) ---------- */
+function makePdf(jpeg, iw, ih, pw, ph, x, y, w, h) {
+  const enc = new TextEncoder(), parts = [], offs = [];
+  let len = 0;
+  const push = d => { const b = typeof d === 'string' ? enc.encode(d) : d; parts.push(b); len += b.length; };
+  const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
+  const f = v => (Math.round(v * 100) / 100).toString();
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'));
+  obj(3, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(pw)} ${f(ph)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`));
+  obj(4, () => { push(`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`); push(jpeg); push('\nendstream'); });
+  const content = `q ${f(w)} 0 0 ${f(h)} ${f(x)} ${f(ph - y - h)} cm /Im0 Do Q`;
+  obj(5, () => push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+  const xref = len;
+  push('xref\n0 6\n0000000000 65535 f \n' + [1, 2, 3, 4, 5].map(n => String(offs[n]).padStart(10, '0') + ' 00000 n \n').join(''));
+  push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+async function exportPDF(mode) {
+  // Vẽ lại với giao diện sáng để in
+  const root = document.documentElement, prev = root.getAttribute('data-theme');
+  root.setAttribute('data-theme', 'light');
+  let cv;
+  try { await Promise.all(S.items.filter(i => i.type === 'img').map(i => loadImg(i.ref))); cv = renderCanvas(); }
+  finally { if (prev === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prev); }
+  if (!cv) { toast('Bảng đang trống, chưa có gì để xuất'); return; }
+  const jpeg = new Uint8Array(await (await canvasBlob(cv, 'image/jpeg', 0.92)).arrayBuffer());
+  const iw = cv.width, ih = cv.height;
+  let pw, ph, x, y, w, h;
+  if (mode === 'a4') {
+    const land = iw > ih; pw = land ? 841.89 : 595.28; ph = land ? 595.28 : 841.89;
+    const m = 28, k = Math.min((pw - 2 * m) / iw, (ph - 2 * m) / ih);
+    w = iw * k; h = ih * k; x = (pw - w) / 2; y = m;
+  } else {
+    // Khổ theo bảng: 1px bảng ≈ 0.75pt, giới hạn cạnh dài 5000pt
+    const k = Math.min(0.75 / (iw / Math.max(1, contentW())), 5000 / Math.max(iw, ih));
+    w = iw * k; h = ih * k; pw = w; ph = h; x = 0; y = 0;
+  }
+  await saveFile(safeName() + '.pdf', makePdf(jpeg, iw, ih, pw, ph, x, y, w, h));
+}
+function contentW() { const b = contentBox(); return b ? b[2] - b[0] + 80 : 1; }
+$('#btn-pdf-a4').addEventListener('click', () => exportPDF('a4'));
+$('#btn-pdf-fit').addEventListener('click', () => exportPDF('fit'));
+$('#btn-dl-img').addEventListener('click', async () => {
+  if (!lastCanvas) return;
+  saveFile(safeName() + '.png', await canvasBlob(lastCanvas, 'image/png'));
 });
 $('#btn-copy-img').addEventListener('click', () => {
   if (!lastCanvas) return;

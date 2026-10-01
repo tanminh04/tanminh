@@ -21,7 +21,7 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Khi đang chọn, thanh màu/nét/mũi tên áp dụng trực tiếp cho thành phần được chọn.
 - Kéo 4 góc khung chọn để phóng to/thu nhỏ (giữ Shift để giữ tỉ lệ).
 - Chọn nhiều (kéo vùng hoặc Shift+bấm), nhân bản sang bên phải (nút Nhân bản / Ctrl+D), Alt+kéo để kéo ra bản sao, Ctrl+C / Ctrl+X / Ctrl+V, Ctrl+A.
-- Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG.
+- Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG và PDF (A4 hoặc theo khổ bảng, nền trắng).
 
 ## Phím tắt
 `Space`, `V` hoặc nhấn-thả `⌘ Command`/`Ctrl` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `U` nối chữ U · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · `F` phân số · giữ `Space`+kéo để di chuyển bảng · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
