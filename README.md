@@ -8,7 +8,7 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Ảnh: dán Ctrl/⌘+V (ảnh chụp màn hình, ảnh copy), kéo thả file, hoặc nút "Ảnh"; ảnh lưu trong IndexedDB của trình duyệt, kéo góc để đổi cỡ.
 - Chữ có danh sách: gõ `- ` đầu dòng (hoặc nút trên thanh bên) để ra gạch đầu dòng •, nút đánh số 1. 2. 3.; Enter tự thêm dòng, Enter ở dòng trống để thoát, Tab / Shift+Tab thụt lề.
 - Công cụ "Phân số" (phím F): tử số, gạch ngang, mẫu số; Enter để xuống mẫu số, gạch tự dài theo chữ.
-- Công cụ "Nối U" (phím U): đường chữ U bo góc có mũi tên, kéo từ điểm đầu xuống, sang ngang rồi lên điểm cuối; đáy U theo điểm thấp nhất khi kéo.
+- Công cụ "Nối U" (phím U): đường chữ U bo góc có mũi tên. Kéo xuống trước ra U, kéo lên trước ra U ngược (∩); nút U / ∩ trên thanh bên để chọn chiều hoặc lật đường đã vẽ.
 - Công cụ "Chữ T": bấm 1 lần ra khung chữ T sẵn, hoặc kéo để chọn kích thước.
 - Tài khoản chữ T nhập liệu trực tiếp: tên khu vực, tiêu đề hai bên, từng dòng có số bước `(1)`, dấu `+/−`, khoản mục, số tiền.
 - Tự tính Δ hai bên và báo **Cân đối / Lệch**.
