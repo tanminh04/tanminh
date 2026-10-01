@@ -50,7 +50,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 body[data-tool="select"] #board { cursor: default; }
 body[data-tool="hand"] #board, body.space #board { cursor: grab; }
 body.panning #board { cursor: grabbing; }
-body[data-tool="text"] #board { cursor: text; }
+body[data-tool="text"] #board, body[data-tool="frac"] #board { cursor: text; }
 body[data-tool="eraser"] #board { cursor: cell; }
 body[data-tool="ta"] #board, body[data-tool="tshape"] #board { cursor: copy; }
 #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -102,6 +102,11 @@ body[data-tool="select"] .ta:hover { border-color: var(--line); }
 .ta-resize::after { content: ""; position: absolute; right: 7px; bottom: 7px; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); opacity: 0; }
 .ta:hover .ta-resize::after, .ta.sel .ta-resize::after { opacity: .7; }
 
+.frac-edit { position: absolute; display: flex; flex-direction: column; align-items: center; font-family: var(--hand); line-height: 1.25; }
+.frac-edit input { font: inherit; color: inherit; background: transparent; border: 1px dashed var(--accent); outline: 0; text-align: center; padding: 0; margin: 0; height: 1.25em; box-sizing: border-box; border-radius: 3px; }
+.frac-edit input::placeholder { color: var(--muted); opacity: .6; }
+.frac-edit input:focus { background: var(--accent-soft); }
+.fe-bar { height: max(1.2px, .055em); background: currentColor; margin: max(3px, .15em) 0; border-radius: 1px; }
 .tx-edit { position: absolute; margin: 0; padding: 0; border: 1px dashed var(--accent); outline: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--hand); line-height: 1.25; white-space: pre; min-width: 40px; }
 
 /* ---------- home (kho bảng) ---------- */
@@ -162,7 +167,7 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 3px; flex: none; }
 .col > .sep { width: 22px; height: 1px; margin: 3px 0; }
 #tools { max-height: calc(100% - 150px); overflow-y: auto; }
-#tools .tb { width: 60px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+#tools .tb { width: 60px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 #tools .tb svg { flex: none; width: 20px; height: 20px; }
 #tools .tb span { font-size: 10px; font-weight: 500; line-height: 1.1; white-space: nowrap; color: var(--muted); }
 #tools .tb[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
@@ -290,11 +295,12 @@ body.at-home #board, body.at-home .ui:not(#toast) { display: none !important; }
   <button class="tb" data-tool="rect" title="Hình chữ nhật (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg><span>Hộp</span></button>
   <button class="tb" data-tool="ellipse" title="Hình elip (O)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg><span>Elip</span></button>
   <button class="tb" data-tool="text" title="Chữ viết (T)"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg><span>Chữ</span></button>
+  <button class="tb" data-tool="frac" title="Phân số: tử số / gạch ngang / mẫu số (F). Enter để xuống mẫu số"><svg viewBox="0 0 24 24"><path d="M5 12h14M9 4.5h6M9 19.5h6"/></svg><span>Phân số</span></button>
 </div>
 
 <div class="ui bar col" id="stylebar" aria-label="Màu và nét"></div>
 
-<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>Space</kbd> chọn · kéo góc để đổi cỡ · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · giữ <kbd>Space</kbd>+kéo để di chuyển bảng · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
+<div class="ui hide-sm" id="hint"><kbd>K</kbd> vẽ chữ T · <kbd>T</kbd> viết chữ · <kbd>F</kbd> phân số · <kbd>Space</kbd> chọn · kéo góc để đổi cỡ · <kbd>Ctrl</kbd>+<kbd>D</kbd> nhân bản · <kbd>Enter</kbd> thêm dòng · giữ <kbd>Space</kbd>+kéo để di chuyển bảng · <kbd>Ctrl</kbd>+cuộn để phóng to</div>
 <div class="ui" id="toast" role="status" hidden></div>
 
 <div id="modal" hidden>
@@ -346,7 +352,8 @@ const cval = c => getComputedStyle(document.documentElement).getPropertyValue('-
 const r1 = v => Math.round(v * 10) / 10;
 const byId = id => S.items.find(i => i.id === id);
 const taEl = id => taLayer.querySelector(`.ta[data-id="${id}"]`);
-const family = t => t === 'pen' ? 'pen' : t === 'hl' ? 'hl' : SHAPES.includes(t) ? 'shape' : t === 'text' ? 'text' : null;
+const family = t => t === 'pen' ? 'pen' : t === 'hl' ? 'hl' : SHAPES.includes(t) ? 'shape' : t === 'text' || t === 'frac' ? 'text' : null;
+const isTextish = it => it.type === 'text' || it.type === 'frac';
 
 /* ---------- numbers ---------- */
 function num(s) {
@@ -494,7 +501,15 @@ function textSize(it) {
   for (const l of lines) w = Math.max(w, mctx.measureText(l).width);
   return { w: Math.max(w, 12), h: lines.length * it.size * 1.25, lines };
 }
+// Phân số: tử số / gạch ngang / mẫu số, gạch dài theo dòng dài hơn
+function fracSize(it) {
+  mctx.font = `${it.size}px ${HAND}`;
+  const w = Math.max(mctx.measureText(it.num || '').width, mctx.measureText(it.den || '').width, it.size) + it.size * 0.5;
+  const lh = it.size * 1.25, gap = Math.max(3, it.size * 0.15);
+  return { w, lh, gap, bar: it.y + lh + gap, h: lh * 2 + gap * 2 };
+}
 function bbox(it) {
+  if (it.type === 'frac') { const m = fracSize(it); return [it.x, it.y, it.x + m.w, it.y + m.h]; }
   if (it.type === 'stroke') {
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
     for (const [x, y] of it.pts) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
@@ -514,7 +529,7 @@ function segDist(px, py, ax, ay, bx, by) {
 }
 function hit(it, x, y, tol) {
   if (it.type === 'ta') return false;
-  if (it.type === 'text') { const b = bbox(it); return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol; }
+  if (isTextish(it)) { const b = bbox(it); return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol; }
   const t = tol + it.w / 2;
   if (it.type === 'stroke') {
     const p = it.pts;
@@ -540,13 +555,20 @@ function topHit(x, y, tol) {
 }
 function moveItem(it, dx, dy) {
   if (it.type === 'stroke') it.pts = it.pts.map(([x, y]) => [r1(x + dx), r1(y + dy)]);
-  else if (it.type === 'text' || it.type === 'ta') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
+  else if (isTextish(it) || it.type === 'ta') { it.x = r1(it.x + dx); it.y = r1(it.y + dy); }
   else { it.x1 = r1(it.x1 + dx); it.y1 = r1(it.y1 + dy); it.x2 = r1(it.x2 + dx); it.y2 = r1(it.y2 + dy); if (it.yb != null) it.yb = r1(it.yb + dy); }
 }
 
 /* ---------- rendering: ink ---------- */
 function itemSvg(it) {
   if (it.type === 'ta' || it.id === editingId) return '';
+  if (it.type === 'frac') {
+    const m = fracSize(it), cx = r1(it.x + m.w / 2), c = cvar(it.color);
+    return `<g font-family='${HAND}' font-size="${it.size}" fill="${c}" text-anchor="middle">` +
+      `<text x="${cx}" y="${r1(it.y + it.size * 0.9)}">${esc(it.num)}</text>` +
+      `<line x1="${it.x}" y1="${r1(m.bar)}" x2="${r1(it.x + m.w)}" y2="${r1(m.bar)}" stroke="${c}" stroke-width="${Math.max(1.2, r1(it.size / 18))}" stroke-linecap="round"/>` +
+      `<text x="${cx}" y="${r1(m.bar + m.gap + it.size * 0.9)}">${esc(it.den)}</text></g>`;
+  }
   if (it.type === 'text') {
     const { lines } = textSize(it);
     return `<text font-family='${HAND}' font-size="${it.size}" fill="${cvar(it.color)}">` +
@@ -598,7 +620,7 @@ function handleAt(x, y, touch) {
 function scaleItem(it, o, ax, ay, sx, sy) {
   const X = v => r1(ax + (v - ax) * sx), Y = v => r1(ay + (v - ay) * sy);
   if (o.type === 'stroke') it.pts = o.pts.map(([x, y]) => [X(x), Y(y)]);
-  else if (o.type === 'text') { it.x = X(o.x); it.y = Y(o.y); it.size = Math.max(8, r1(o.size * Math.sqrt(sx * sy))); }
+  else if (isTextish(o)) { it.x = X(o.x); it.y = Y(o.y); it.size = Math.max(8, r1(o.size * Math.sqrt(sx * sy))); }
   else if (o.type === 'ta') { it.x = X(o.x); it.y = Y(o.y); it.w = Math.round(Math.max(340, o.w * sx)); }
   else { it.x1 = X(o.x1); it.y1 = Y(o.y1); it.x2 = X(o.x2); it.y2 = Y(o.y2); if (o.yb != null) it.yb = Y(o.yb); }
 }
@@ -746,6 +768,40 @@ taLayer.addEventListener('keydown', e => {
 });
 
 /* ---------- text editing ---------- */
+function editFrac(it, isNew) {
+  editingId = it.id; renderSvg();
+  const box = document.createElement('div');
+  box.className = 'frac-edit';
+  box.style.cssText = `left:${it.x}px;top:${it.y}px;font-size:${it.size}px;color:${cvar(it.color)}`;
+  box.innerHTML = '<input class="fe-n" placeholder="Tử số" aria-label="Tử số"><div class="fe-bar"></div><input class="fe-d" placeholder="Mẫu số" aria-label="Mẫu số">';
+  const n = box.querySelector('.fe-n'), d = box.querySelector('.fe-d');
+  n.value = it.num || ''; d.value = it.den || '';
+  const fit = () => { const m = fracSize({ ...it, num: n.value || 'Tử số', den: d.value || 'Mẫu số' }); n.style.width = d.style.width = box.querySelector('.fe-bar').style.width = m.w + 'px'; };
+  fit(); n.addEventListener('input', fit); d.addEventListener('input', fit);
+  let done = false;
+  const finish = () => {
+    if (done) return; done = true;
+    box.remove(); editingId = null;
+    const nv = n.value.trim(), dv = d.value.trim();
+    if (!nv && !dv) { removeItem(it.id); if (!isNew) commit(); }
+    else { it.num = nv; it.den = dv; commit(); }
+    renderSvg();
+  };
+  box.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Escape') { finish(); return; }
+    if (e.key === 'Enter' || e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (e.target === n && (e.key === 'ArrowDown' || !e.shiftKey && e.key !== 'ArrowUp')) d.focus();
+      else if (e.target === d && (e.key === 'ArrowUp' || e.shiftKey)) n.focus();
+      else if (e.key === 'Enter' || e.key === 'Tab') finish();
+    }
+  });
+  box.addEventListener('pointerdown', e => e.stopPropagation());
+  box.addEventListener('focusout', () => setTimeout(() => { if (!box.contains(document.activeElement)) finish(); }, 0));
+  world.appendChild(box);
+  (it.num && !it.den ? d : n).focus();
+}
 function editText(it, isNew) {
   editingId = it.id; renderSvg();
   const ta = document.createElement('textarea');
@@ -806,7 +862,7 @@ board.addEventListener('pointerdown', e => {
     const g = selBox(), cs = corners(g), [ax, ay] = cs[(hIdx + 2) % 4], [cx, cy] = cs[hIdx];
     const items = selectedItems();
     op = { type: 'scale', items, orig: items.map(i => JSON.parse(JSON.stringify(i))), ax, ay, cx, cy,
-      uniform: items.every(i => i.type === 'text'), moved: false };
+      uniform: items.every(isTextish), moved: false };
     board.setPointerCapture(e.pointerId);
     return;
   }
@@ -860,6 +916,7 @@ board.addEventListener('pointerdown', e => {
     }
     case 'eraser': op = { type: 'erase', removed: false }; eraseAt(x, y); break;
     case 'text': op = { type: 'text', x, y }; break;
+    case 'frac': op = { type: 'frac', x, y }; break;
     case 'ta': {
       const it = newTA(x - 310, y - 20);
       S.items.push(it); commit(); replaceTA(it);
@@ -983,10 +1040,22 @@ function endPointer(e) {
   else if (o.type === 'text' && e.type === 'pointerup') {
     const h = topHit(o.x, o.y, 4 / S.view.z);
     if (h && h.type === 'text') editText(h, false);
+    else if (h && h.type === 'frac') editFrac(h, false);
     else {
       const st = ST.text;
       const it = { id: uid(), type: 'text', x: r1(o.x), y: r1(o.y - st.w * 0.6), text: '', color: st.c, size: st.w };
       S.items.push(it); editText(it, true);
+    }
+  }
+  else if (o.type === 'frac' && e.type === 'pointerup') {
+    const h = topHit(o.x, o.y, 4 / S.view.z);
+    if (h && h.type === 'frac') editFrac(h, false);
+    else if (h && h.type === 'text') editText(h, false);
+    else {
+      const st = ST.text, it = { id: uid(), type: 'frac', x: 0, y: 0, num: '', den: '', color: st.c, size: st.w };
+      const m = fracSize({ ...it, num: 'Tử số', den: 'Mẫu số' });
+      it.x = r1(o.x - m.w / 2); it.y = r1(o.y - m.h / 2);
+      S.items.push(it); editFrac(it, true);
     }
   }
 }
@@ -998,6 +1067,7 @@ board.addEventListener('dblclick', e => {
   const [x, y] = toWorld(e.clientX, e.clientY);
   const h = topHit(x, y, 6 / S.view.z);
   if (h && h.type === 'text') editText(h, false);
+  if (h && h.type === 'frac') editFrac(h, false);
 });
 board.addEventListener('wheel', e => {
   e.preventDefault();
@@ -1021,9 +1091,9 @@ function renderStyleBar() {
   const selVec = tool === 'select' ? selectedItems().filter(i => i.type !== 'ta') : [];
   if (tool === 'select') {
     if (!selVec.length) { bar.hidden = true; return; }
-    const kinds = new Set(selVec.map(i => i.type === 'stroke' ? (i.hl ? 'hl' : 'pen') : i.type === 'text' ? 'text' : 'shape'));
+    const kinds = new Set(selVec.map(i => i.type === 'stroke' ? (i.hl ? 'hl' : 'pen') : isTextish(i) ? 'text' : 'shape'));
     f = kinds.size === 1 ? [...kinds][0] : null;
-    st = { c: selVec[0].color, w: selVec[0].type === 'text' ? selVec[0].size : selVec[0].w };
+    st = { c: selVec[0].color, w: isTextish(selVec[0]) ? selVec[0].size : selVec[0].w };
   } else if (!f) { bar.hidden = true; return; }
   bar.hidden = false;
   const colors = f === 'hl' ? ['yellow', 'green', 'blue', 'red', 'orange', 'purple'] : COLORS;
@@ -1046,7 +1116,7 @@ $('#stylebar').addEventListener('click', e => {
     const items = selectedItems().filter(i => i.type !== 'ta'); if (!items.length) return;
     for (const it of items) {
       if (b.dataset.c) it.color = b.dataset.c;
-      if (b.dataset.w) { if (it.type === 'text') it.size = +b.dataset.w; else it.w = +b.dataset.w; }
+      if (b.dataset.w) { if (isTextish(it)) it.size = +b.dataset.w; else it.w = +b.dataset.w; }
       if (b.dataset.ua && it.type === 'ucon') it.arrows = +b.dataset.ua;
     }
     commit(); renderSvg(); return;
@@ -1234,7 +1304,14 @@ function renderCanvas(maxW, maxH) {
   for (const it of S.items) {
     if (it.type === 'ta') continue;
     ctx.save();
-    if (it.type === 'text') {
+    if (it.type === 'frac') {
+      const m = fracSize(it), cx = it.x + m.w / 2;
+      ctx.fillStyle = ctx.strokeStyle = cval(it.color); ctx.font = `${it.size}px ${HAND}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+      ctx.fillText(it.num || '', cx, it.y + it.size * 0.9);
+      ctx.fillText(it.den || '', cx, m.bar + m.gap + it.size * 0.9);
+      ctx.lineWidth = Math.max(1.2, it.size / 18); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(it.x, m.bar); ctx.lineTo(it.x + m.w, m.bar); ctx.stroke();
+    } else if (it.type === 'text') {
       ctx.fillStyle = cval(it.color); ctx.font = `${it.size}px ${HAND}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
       it.text.split('\n').forEach((l, i) => ctx.fillText(l, it.x, it.y + it.size * 0.9 + i * it.size * 1.25));
     } else {
@@ -1284,7 +1361,7 @@ $('#btn-zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight
 $('#btn-zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, S.view.z / 1.2));
 $('#zoomv').addEventListener('click', fitView);
 
-const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text', u: 'ucon' };
+const KEYS = { v: 'select', h: 'hand', k: 'tshape', n: 'ta', p: 'pen', m: 'hl', e: 'eraser', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', t: 'text', u: 'ucon', f: 'frac' };
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeMenus(); $('#modal').hidden = true; }
   if (!curId) return;

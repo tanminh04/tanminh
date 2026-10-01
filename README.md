@@ -5,6 +5,7 @@ Bảng trắng trên trình duyệt để vẽ tài khoản chữ T (T-account) 
 Mở `index.html` bằng trình duyệt là dùng được, không cần cài đặt.
 
 ## Tính năng
+- Công cụ "Phân số" (phím F): tử số, gạch ngang, mẫu số; Enter để xuống mẫu số, gạch tự dài theo chữ.
 - Công cụ "Nối U" (phím U): đường chữ U bo góc có mũi tên, kéo từ điểm đầu xuống, sang ngang rồi lên điểm cuối; đáy U theo điểm thấp nhất khi kéo.
 - Công cụ "Chữ T": bấm 1 lần ra khung chữ T sẵn, hoặc kéo để chọn kích thước.
 - Tài khoản chữ T nhập liệu trực tiếp: tên khu vực, tiêu đề hai bên, từng dòng có số bước `(1)`, dấu `+/−`, khoản mục, số tiền.
@@ -19,4 +20,4 @@ Mở `index.html` bằng trình duyệt là dùng được, không cần cài đ
 - Hoàn tác/làm lại, tự lưu vào trình duyệt, lưu/mở tệp `.json`, xuất ảnh PNG.
 
 ## Phím tắt
-`Space`, `V` hoặc nhấn-thả `⌘ Command`/`Ctrl` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `U` nối chữ U · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · giữ `Space`+kéo để di chuyển bảng · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
+`Space`, `V` hoặc nhấn-thả `⌘ Command`/`Ctrl` chọn/sửa · `H` kéo bảng · `K` vẽ chữ T (2 nét) · `U` nối chữ U · `N` T-account có ô nhập số · `P` bút · `M` đánh dấu · `E` tẩy · `A` mũi tên · `L` đường thẳng · `R` chữ nhật · `O` elip · `T` chữ · `F` phân số · giữ `Space`+kéo để di chuyển bảng · `Ctrl`+cuộn để phóng to · `Ctrl+Z` / `Ctrl+Shift+Z` · `Delete` xoá đối tượng chọn · `Enter` trong tài khoản để thêm dòng.
