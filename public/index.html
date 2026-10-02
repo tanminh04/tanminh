@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro Wire</title>
+<style>
+  :root {
+    --bg: #0b0e13; --panel: #11161d; --line: #1e2630; --text: #d7dde5; --muted: #7d8896;
+    --accent: #f5a623; --up: #2ecc71; --down: #ff5c5c; --hi: #ff5c5c; --med: #f5a623; --lo: #4a5563;
+    --flash: rgba(245,166,35,.16);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .logo { font-weight: 700; letter-spacing: .5px; }
+  .logo b { color: var(--accent); }
+  .live { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lo); }
+  .live.on .dot { background: var(--up); box-shadow: 0 0 0 0 rgba(46,204,113,.6); animation: pulse 2s infinite; }
+  .live.off .dot { background: var(--down); }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(46,204,113,0); } 100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); } }
+  .clocks { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 14px; }
+  .clocks span b { color: var(--text); font-weight: 500; }
+  .ticker { display: flex; gap: 22px; overflow-x: auto; padding: 6px 16px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; white-space: nowrap; scrollbar-width: none; }
+  .ticker:empty::before { content: 'Chưa có nguồn giá (cấu hình FINNHUB_KEY hoặc chạy DEMO=1)'; color: var(--muted); }
+  .q .sym { color: var(--muted); margin-right: 6px; }
+  .q .up { color: var(--up); } .q .down { color: var(--down); }
+  .q.tick { animation: qflash .8s; }
+  @keyframes qflash { from { background: var(--flash); } to { background: transparent; } }
+  main { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 90px); }
+  aside { border-right: 1px solid var(--line); padding: 14px 16px; }
+  aside h4 { margin: 16px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }
+  aside h4:first-child { margin-top: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--text); padding: 3px 9px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  input[type=search] { width: 100%; padding: 7px 9px; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 4px; font: inherit; }
+  label.tg { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 8px; cursor: pointer; }
+  .src { font-size: 12px; display: flex; align-items: center; gap: 6px; margin: 4px 0; color: var(--muted); }
+  .src .dot { width: 6px; height: 6px; }
+  .src.ok .dot { background: var(--up); } .src.err .dot { background: var(--down); }
+  .feed { padding: 0 0 40px; min-width: 0; }
+  .day { position: sticky; top: 49px; background: var(--bg); padding: 10px 16px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); border-bottom: 1px solid var(--line); z-index: 2; }
+  .row { display: grid; grid-template-columns: 58px 4px 1fr; gap: 12px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+  .row:hover { background: var(--panel); }
+  .row.new { animation: rowflash 6s ease-out; }
+  @keyframes rowflash { from { background: var(--flash); } to { background: transparent; } }
+  .t { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+  .imp { border-radius: 2px; background: var(--lo); }
+  .imp.i3 { background: var(--hi); } .imp.i2 { background: var(--med); }
+  .h { color: var(--text); text-decoration: none; font-weight: 500; }
+  .row.i3 .h { color: #fff; font-weight: 600; }
+  a.h:hover { text-decoration: underline; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .tag { border: 1px solid var(--line); padding: 0 6px; border-radius: 3px; }
+  .sum { color: var(--muted); font-size: 13px; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty { padding: 40px 16px; color: var(--muted); text-align: center; }
+  .banner { position: fixed; left: 50%; transform: translateX(-50%); top: 100px; background: var(--accent); color: #111; padding: 6px 14px; border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: none; z-index: 10; }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    aside .extra { display: none; }
+    .clocks span:nth-child(n+2) { display: none; }
+    .row { grid-template-columns: 46px 3px 1fr; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">MACRO<b>WIRE</b></div>
+  <div class="live" id="live"><span class="dot"></span><span id="liveText">Đang kết nối…</span></div>
+  <div class="clocks" id="clocks"></div>
+</header>
+<div class="ticker" id="ticker"></div>
+<main>
+  <aside>
+    <h4>Tìm kiếm</h4>
+    <input type="search" id="q" placeholder="Fed, CPI, tỷ giá…">
+    <h4>Mức độ</h4>
+    <div class="chips" data-f="impact">
+      <button class="chip" data-v="3">Cao</button><button class="chip" data-v="2">Trung bình</button><button class="chip" data-v="1">Thấp</button>
+    </div>
+    <h4>Khu vực</h4>
+    <div class="chips" data-f="regions">
+      <button class="chip" data-v="US">US</button><button class="chip" data-v="EU">EU</button><button class="chip" data-v="UK">UK</button>
+      <button class="chip" data-v="JP">JP</button><button class="chip" data-v="CN">CN</button><button class="chip" data-v="VN">VN</button>
+    </div>
+    <h4>Tài sản</h4>
+    <div class="chips" data-f="assets">
+      <button class="chip" data-v="Macro">Macro</button><button class="chip" data-v="Rates">Rates</button><button class="chip" data-v="FX">FX</button>
+      <button class="chip" data-v="Equity">Equity</button><button class="chip" data-v="Commod">Commod</button>
+    </div>
+    <div class="extra">
+    <h4>Tuỳ chọn</h4>
+    <label class="tg"><input type="checkbox" id="sound"> Âm báo tin quan trọng</label>
+    <label class="tg"><input type="checkbox" id="notify"> Thông báo trình duyệt</label>
+    <h4>Nguồn</h4>
+    <div id="sources"></div>
+    </div>
+  </aside>
+  <section class="feed" id="feed"><div class="empty">Đang tải tin…</div></section>
+</main>
+<div class="banner" id="banner"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = new Map();
+const filters = { impact: new Set(), regions: new Set(), assets: new Set(), q: '' };
+let pendingNew = 0;
+
+// ---- Lưu tuỳ chọn người xem ----
+function load(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+const saved = load('mw.filters', {});
+for (const k of ['impact', 'regions', 'assets']) (saved[k] || []).forEach(v => filters[k].add(String(v)));
+$('#sound').checked = load('mw.sound', false);
+$('#notify').checked = load('mw.notify', false);
+
+document.querySelectorAll('.chips').forEach(group => {
+  const key = group.dataset.f;
+  group.querySelectorAll('.chip').forEach(btn => {
+    if (filters[key].has(btn.dataset.v)) btn.classList.add('on');
+    btn.onclick = () => {
+      const v = btn.dataset.v;
+      filters[key].has(v) ? filters[key].delete(v) : filters[key].add(v);
+      btn.classList.toggle('on');
+      save('mw.filters', { impact: [...filters.impact], regions: [...filters.regions], assets: [...filters.assets] });
+      render();
+    };
+  });
+});
+$('#q').oninput = e => { filters.q = e.target.value.trim().toLowerCase(); render(); };
+$('#sound').onchange = e => save('mw.sound', e.target.checked);
+$('#notify').onchange = async e => {
+  if (e.target.checked && 'Notification' in window && Notification.permission !== 'granted') {
+    e.target.checked = (await Notification.requestPermission()) === 'granted';
+  }
+  save('mw.notify', e.target.checked);
+};
+
+// ---- Đồng hồ ----
+const ZONES = [['HN', 'Asia/Ho_Chi_Minh'], ['NY', 'America/New_York'], ['LDN', 'Europe/London'], ['TKY', 'Asia/Tokyo']];
+function tickClock() {
+  const now = new Date();
+  $('#clocks').innerHTML = ZONES.map(([l, tz]) =>
+    `<span>${l} <b>${now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</b></span>`).join('');
+}
+tickClock(); setInterval(tickClock, 1000);
+
+// ---- Render ----
+function match(it) {
+  if (filters.impact.size && !filters.impact.has(String(it.impact))) return false;
+  if (filters.regions.size && !it.regions.some(r => filters.regions.has(r))) return false;
+  if (filters.assets.size && !it.assets.some(a => filters.assets.has(a))) return false;
+  if (filters.q && !(it.title + ' ' + it.summary + ' ' + it.source).toLowerCase().includes(filters.q)) return false;
+  return true;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Hiển thị theo giờ Việt Nam bất kể múi giờ máy người xem
+const TZ = 'Asia/Ho_Chi_Minh';
+const dayFmt = new Intl.DateTimeFormat('vi-VN', { timeZone: TZ, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function rowHtml(it, isNew) {
+  const time = new Date(it.ts).toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+  const head = it.link ? `<a class="h" href="${esc(it.link)}" target="_blank" rel="noopener">${esc(it.title)}</a>` : `<span class="h">${esc(it.title)}</span>`;
+  const tags = [...it.regions, ...it.assets].map(t => `<span class="tag">${t}</span>`).join('');
+  return `<div class="row i${it.impact}${isNew ? ' new' : ''}" data-id="${it.id}">
+    <div class="t">${time}</div><div class="imp i${it.impact}"></div>
+    <div>${head}${it.summary ? `<div class="sum">${esc(it.summary)}</div>` : ''}
+      <div class="meta"><span>${esc(it.source)}</span>${tags}</div></div></div>`;
+}
+
+let newIds = new Set();
+function render() {
+  const list = [...store.values()].filter(match).sort((a, b) => b.ts - a.ts);
+  if (!list.length) { $('#feed').innerHTML = '<div class="empty">Không có tin phù hợp bộ lọc.</div>'; return; }
+  let html = '', lastDay = '';
+  for (const it of list) {
+    const d = dayFmt.format(new Date(it.ts));
+    if (d !== lastDay) { html += `<div class="day">${d}</div>`; lastDay = d; }
+    html += rowHtml(it, newIds.has(it.id));
+  }
+  $('#feed').innerHTML = html;
+  newIds = new Set();
+}
+
+function addItems(arr, live) {
+  for (const it of arr) {
+    if (store.has(it.id)) continue;
+    store.set(it.id, it);
+    if (live) {
+      newIds.add(it.id);
+      if (match(it)) { pendingNew++; alertFor(it); }
+    }
+  }
+  render();
+  if (live && window.scrollY > 300 && pendingNew) {
+    $('#banner').textContent = `${pendingNew} tin mới ↑`;
+    $('#banner').style.display = 'block';
+  }
+}
+$('#banner').onclick = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+window.addEventListener('scroll', () => { if (window.scrollY < 100) { pendingNew = 0; $('#banner').style.display = 'none'; } });
+
+let audioCtx;
+function beep() {
+  try {
+    audioCtx ||= new AudioContext();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = 880; g.gain.value = 0.05;
+    o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.12);
+  } catch {}
+}
+function alertFor(it) {
+  if (it.impact < 3) return;
+  if ($('#sound').checked) beep();
+  if ($('#notify').checked && 'Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    new Notification(it.source, { body: it.title });
+  }
+}
+
+// ---- Ticker ----
+const lastPx = {};
+function renderQuotes(qs) {
+  $('#ticker').innerHTML = qs.map(q => {
+    const cls = q.change >= 0 ? 'up' : 'down';
+    const ticked = lastPx[q.sym] !== undefined && lastPx[q.sym] !== q.price;
+    lastPx[q.sym] = q.price;
+    return `<span class="q${ticked ? ' tick' : ''}"><span class="sym">${q.sym}</span>${q.price.toFixed(2)} <span class="${cls}">${q.change >= 0 ? '+' : ''}${q.change.toFixed(2)}%</span></span>`;
+  }).join('');
+}
+
+function renderSources(st) {
+  $('#sources').innerHTML = Object.values(st).map(s =>
+    `<div class="src ${s.ok === true ? 'ok' : s.ok === false ? 'err' : ''}" title="${esc(s.error || '')}"><span class="dot"></span>${esc(s.name)}</div>`).join('');
+}
+
+// ---- Kết nối realtime (SSE, tự reconnect; fallback polling) ----
+function setLive(state, text) { $('#live').className = 'live ' + state; $('#liveText').textContent = text; }
+
+async function initialLoad() {
+  try { addItems(await (await fetch('/api/news?limit=300')).json(), false); }
+  catch { $('#feed').innerHTML = '<div class="empty">Không tải được dữ liệu từ server.</div>'; }
+}
+
+function connect() {
+  const es = new EventSource('/api/stream');
+  es.onopen = () => setLive('on', 'LIVE');
+  es.onerror = () => setLive('off', 'Mất kết nối, đang thử lại…');
+  es.addEventListener('news', e => addItems(JSON.parse(e.data), true));
+  es.addEventListener('quotes', e => renderQuotes(JSON.parse(e.data)));
+  es.addEventListener('status', e => renderSources(JSON.parse(e.data)));
+}
+
+initialLoad().then(connect);
+</script>
+</body>
+</html>

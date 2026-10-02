@@ -1,0 +1,11 @@
+{
+  "name": "macro-wire",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real-time macro news feed",
+  "scripts": {
+    "start": "node server/index.js",
+    "demo": "DEMO=1 node server/index.js"
+  },
+  "engines": { "node": ">=18" }
+}
